@@ -11,6 +11,11 @@ const routes = [
     component: () => import('../views/workspace/index.vue')
   },
   {
+    path: '/workspace/:id',
+    name: 'WorkspaceDetail',
+    component: () => import('../views/workspace/detail.vue')
+  },
+  {
     path: '/instances',
     name: 'Instances',
     component: () => import('../views/instances/index.vue')

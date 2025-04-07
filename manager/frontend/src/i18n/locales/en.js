@@ -9,13 +9,37 @@ export default {
     manage: 'Manage',
     start: 'Start',
     stop: 'Stop',
-    create: 'Create Instance'
+    create: 'Create Instance',
+    delete: 'Delete'
   },
   workspace: {
     title: 'Workspaces',
     open: 'Open',
+    delete: 'Delete',
     create: 'Create Workspace',
-    description: 'Development and testing environment'
+    description: 'Development and testing environment',
+    add_service: 'Add Service',
+    start_all: 'Start All',
+    stop_all: 'Stop All',
+    step_search: 'Search Service',
+    step_config: 'Configure Service',
+    select_service: 'Select',
+    previous: 'Previous',
+    next: 'Next',
+    empty_description: 'No workspaces',
+    create_modal_title: 'Create Workspace',
+    form: {
+      name_label: 'Name',
+      name_placeholder: 'Enter workspace name',
+      name_required: 'Please enter workspace name',
+      description_label: 'Description',
+      description_placeholder: 'Enter workspace description',
+      description_required: 'Please enter workspace description'
+    },
+    delete_confirm_title: 'Confirm Delete',
+    delete_confirm_content: 'Are you sure to delete {name}?',
+    delete_confirm_ok: 'Delete',
+    delete_confirm_cancel: 'Cancel'
   },
   search: {
     title: 'Search Services',
@@ -50,54 +74,28 @@ export default {
     }
   },
   menu: {
-    chat: 'Chat',
-    tools: 'Tools',
-    apps: 'Apps',
-    settings: 'Settings'
-  },
-  chat: {
-    title: 'Chat',
-    placeholder: 'Type a message...',
-    send: 'Send',
-    sessions: 'Sessions'
-  },
-  tools: {
-    title: 'Tools',
-    calculator: {
-      name: 'Calculator',
-      desc: 'Basic calculation tool'
-    },
-    calendar: {
-      name: 'Calendar',
-      desc: 'Date viewing and planning'
-    },
-    timer: {
-      name: 'Timer',
-      desc: 'Time management tool'
-    },
-    colorPicker: {
-      name: 'Color Picker',
-      desc: 'Color selection tool'
-    }
-  },
-  apps: {
-    title: 'Apps',
-    games: {
-      name: 'Game Center',
-      desc: 'Casual games collection'
-    },
-    music: {
-      name: 'Music Player',
-      desc: 'Online music streaming'
-    },
-    video: {
-      name: 'Video Player',
-      desc: 'Local video playback'
-    }
+    settings: 'Settings',
+    workspace: 'Workspace',
+    search: 'Search'
   },
   settings: {
     title: 'Settings',
     theme: 'Theme',
+    language: 'Language',
+    save: 'Save Settings',
+    themes: {
+      light: 'Light',
+      dark: 'Dark'
+    },
+      desc: 'Local video playback'
+    },
+  install: {
+    type: 'Installation Type',
+    type_required: 'Please select installation type',
+    command: 'Installation Command',
+    cancel: 'Cancel',
+    confirm: 'Confirm',
+    success: 'Installation successful',
     language: 'Language',
     notification: 'Notifications',
     themes: {

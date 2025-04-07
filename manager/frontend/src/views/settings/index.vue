@@ -1,17 +1,20 @@
 <template>
   <n-card>
-    <n-h1>设置</n-h1>
+    <n-h1>{{ t('settings.title') }}</n-h1>
     <n-space vertical size="large">
       <n-form>
-        <n-form-item label="主题">
+        <n-form-item :label="t('settings.theme')">
           <n-select v-model:value="settings.theme" :options="themeOptions" />
         </n-form-item>
-        <n-form-item label="语言">
+        <n-form-item :label="t('settings.language')">
           <n-select v-model:value="settings.language" :options="languageOptions" />
+        </n-form-item>
+        <n-form-item :label="t('settings.baseUrl')">
+          <n-input v-model:value="settings.baseUrl" placeholder="http://localhost:8080" />
         </n-form-item>
       </n-form>
       <n-button type="primary" @click="saveSettings">
-        保存设置
+        {{ t('settings.save') }}
       </n-button>
     </n-space>
   </n-card>
@@ -26,6 +29,7 @@ const { t, locale } = useI18n()
 const settings = ref({
   theme: 'light',
   language: locale.value,
+  baseUrl: '',
   notifications: true
 })
 
@@ -43,4 +47,4 @@ function saveSettings() {
   locale.value = settings.value.language
   // ... 其他设置保存逻辑
 }
-</script> 
+</script>

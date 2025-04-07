@@ -9,13 +9,37 @@ export default {
     manage: '管理',
     start: '启动',
     stop: '停止',
-    create: '创建实例'
+    create: '创建实例',
+    delete: '删除'
   },
   workspace: {
     title: '工作空间',
     open: '打开',
+    delete: '删除',
     create: '创建工作空间',
-    description: '开发和测试环境'
+    description: '开发和测试环境',
+    add_service: '添加服务',
+    start_all: '全部启动',
+    stop_all: '全部停止',
+    step_search: '搜索服务',
+    step_config: '配置服务',
+    select_service: '选择',
+    previous: '上一步',
+    next: '下一步',
+    empty_description: '无工作空间',
+    create_modal_title: '创建工作空间',
+    form: {
+      name_label: '名称',
+      name_placeholder: '输入工作空间名称',
+      name_required: '请输入工作空间名称',
+      description_label: '描述',
+      description_placeholder: '输入工作空间描述',
+      description_required: '请输入工作空间描述'
+    },
+    delete_confirm_title: '确认删除',
+    delete_confirm_content: '确定删除{name}吗？',
+    delete_confirm_ok: '删除',
+    delete_confirm_cancel: '取消'
   },
   search: {
     title: '搜索服务',
@@ -50,54 +74,28 @@ export default {
     }
   },
   menu: {
-    chat: '对话',
-    tools: '工具',
-    apps: '应用',
-    settings: '设置'
-  },
-  chat: {
-    title: '对话',
-    placeholder: '输入消息...',
-    send: '发送',
-    sessions: '会话'
-  },
-  tools: {
-    title: '工具',
-    calculator: {
-      name: '计算器',
-      desc: '基础计算工具'
-    },
-    calendar: {
-      name: '日历',
-      desc: '日期查看与规划'
-    },
-    timer: {
-      name: '计时器',
-      desc: '时间管理工具'
-    },
-    colorPicker: {
-      name: '调色板',
-      desc: '颜色选择工具'
-    }
-  },
-  apps: {
-    title: '应用',
-    games: {
-      name: '游戏中心',
-      desc: '休闲小游戏合集'
-    },
-    music: {
-      name: '音乐播放器',
-      desc: '在线音乐播放'
-    },
-    video: {
-      name: '视频播放器',
-      desc: '本地视频播放'
-    }
+    settings: '设置',
+    workspace: '工作空间',
+    search: '搜索服务'
   },
   settings: {
     title: '设置',
     theme: '主题',
+    language: '语言',
+    save: '保存设置',
+    themes: {
+      light: '浅色',
+      dark: '深色'
+    },
+      desc: '本地视频播放'
+  },
+  install: {
+    type: '安装类型',
+    type_required: '请选择安装类型',
+    command: '安装命令',
+    cancel: '取消',
+    confirm: '确认',
+    success: '安装成功',
     language: '语言',
     notification: '通知',
     themes: {

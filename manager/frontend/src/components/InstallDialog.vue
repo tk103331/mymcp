@@ -1,6 +1,14 @@
 <template>
   <n-modal :show="show" @update:show="emit('update:show', $event)" :title="t('install.title')" preset="dialog" :style="{ width: '600px' }">
     <n-form ref="formRef" :model="formValue" :rules="rules">
+      <!-- 工作空间选择 -->
+      <n-form-item :label="t('install.workspace')" path="workspace">
+        <n-select
+          v-model:value="formValue.workspace"
+          :options="workspaceOptions"
+        />
+      </n-form-item>
+
       <!-- 安装类型选择 -->
       <n-form-item :label="t('install.type')" path="type">
         <n-select
@@ -30,7 +38,7 @@
             :required="arg.required"
           >
             <n-input
-              v-model:value="formValue.arguments[key]"
+              v-model:value="formValue.params[key]"
               :placeholder="arg.example || ''"
             />
             <template #feedback>
@@ -53,9 +61,10 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useMessage } from 'naive-ui'
+import { LoadWorkspaces, SaveServerConfig } from '../../wailsjs/go/bind/Data'
 
 const props = defineProps({
   show: Boolean,
@@ -72,10 +81,14 @@ const installing = ref(false)
 // 表单数据
 const formValue = ref({
   type: null,
+  workspace: null,
   args: [],
   env: {},
   arguments: {}
 })
+
+// 工作空间列表
+const workspaces = ref([])
 
 // 安装类型选项
 const installationTypes = computed(() => {
@@ -102,6 +115,10 @@ const rules = {
   type: {
     required: true,
     message: t('install.type_required')
+  },
+  workspace: {
+    required: true,
+    message: t('install.workspace_required')
   }
 }
 
@@ -112,6 +129,23 @@ const fullCommand = computed(() => {
   return [command, ...args].join('\n').trim()
 })
 
+// 工作空间选项
+const workspaceOptions = computed(() => {
+  return workspaces.value.map(workspace => ({
+    label: workspace.name,
+    value: workspace.id
+  }))
+})
+
+// 加载工作空间列表
+async function loadWorkspaces() {
+  try {
+    workspaces.value = await LoadWorkspaces()
+  } catch (err) {
+    message.error(t('install.load_workspace_error'))
+  }
+}
+
 // 处理安装类型变更
 function handleTypeChange(type) {
   const installation = props.serverData?.installations?.[type]
@@ -120,15 +154,20 @@ function handleTypeChange(type) {
   // 重置表单数据
   formValue.value.args = [...(installation.args || [])]
   formValue.value.env = {}
-  formValue.value.arguments = {}
+  formValue.value.params = {}
   
   // 初始化参数
-  if (props.serverData?.arguments) {
-    Object.keys(props.serverData.arguments).forEach(key => {
-      formValue.value.arguments[key] = ''
+  if (props.serverData?.params) {
+    Object.keys(props.serverData.params).forEach(key => {
+      formValue.value.params[key] = ''
     })
   }
 }
+
+// 组件挂载时加载工作空间列表
+onMounted(() => {
+  loadWorkspaces()
+})
 
 // 处理取消
 function handleCancel() {
@@ -141,17 +180,25 @@ async function handleConfirm() {
     await formRef.value?.validate()
     installing.value = true
 
-    // 发送安装事件
-    emit('confirm', {
+    // 构建服务配置数据
+    const serverConfig = {
+      workspace: formValue.value.workspace,
+      transport: 'stdio',
+      name: props.serverData.name,
       type: formValue.value.type,
-      args: formValue.value.args,
-      env: formValue.value.env
-    })
+      cmd: fullCommand.value.split('\n').join(' '),
+      env: Object.entries(formValue.value.env).map(([key, value]) => `${key}=${value}`),
+      ur: '',
+      params: formValue.value.params
+    }
+
+    // 保存服务配置
+    await SaveServerConfig(serverConfig)
 
     message.success(t('install.success'))
     emit('update:show', false)
   } catch (err) {
-    // 表单验证失败
+    message.error(err.message || t('install.save_error'))
   } finally {
     installing.value = false
   }

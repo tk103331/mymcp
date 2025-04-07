@@ -61,11 +61,6 @@ const menuOptions = [
   {
     label: () => h(RouterLink, { to: '/workspace' }, { default: () => t('menu.workspace') }),
     key: 'workspace',
-    icon: renderIcon(BriefcaseOutline)
-  },
-  {
-    label: () => h(RouterLink, { to: '/instances' }, { default: () => t('menu.instances') }),
-    key: 'instances',
     icon: renderIcon(GridOutline)
   },
   {

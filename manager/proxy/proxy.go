@@ -1,26 +1,30 @@
-package main
+package proxy
 
 import (
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"mcphosting/manager/data"
+	"strings"
+
 	"github.com/mark3labs/mcp-go/client"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
-	"strings"
 )
 
 type ProxyServer struct {
 	*server.MCPServer
+	ID         string
 	BaseUrl    string
 	BasePath   string
+	Status     string
 	ServerInfo mcp.Implementation
 	Client     client.MCPClient
-	Config     Config
+	Config     *data.ServerConfig
 }
 
-func NewProxyServer(cfg Config) (*ProxyServer, error) {
+func NewProxyServer(cfg *data.ServerConfig) (*ProxyServer, error) {
 	proxyServer := &ProxyServer{
 		Config: cfg,
 	}
@@ -36,14 +40,24 @@ func NewProxyServer(cfg Config) (*ProxyServer, error) {
 func (p *ProxyServer) initClient() error {
 	var err error
 	if p.Config.Transport == "stdio" {
-		fields := strings.Fields(p.Config.Cmd)
-		stdioClient, err := client.NewStdioMCPClient(fields[0], p.Config.Env, fields[1:]...)
+		cmd := p.Config.Cmd
+		envs := p.Config.Env[:]
+		for k, v := range p.Config.Params {
+			cmd = strings.ReplaceAll(cmd, "${"+k+"}", v)
+			envs = append(envs, k+"="+v)
+		}
+		fields := strings.Fields(cmd)
+		stdioClient, err := client.NewStdioMCPClient(fields[0], envs, fields[1:]...)
 		if err != nil {
 			return err
 		}
 		p.Client = stdioClient
 	} else if p.Config.Transport == "sse" {
-		sseClient, err := client.NewSSEMCPClient(p.Config.Url)
+		url := p.Config.Url
+		for k, v := range p.Config.Params {
+			url = strings.ReplaceAll(url, "${"+k+"}", v)
+		}
+		sseClient, err := client.NewSSEMCPClient(url)
 		if err != nil {
 			return err
 		}
