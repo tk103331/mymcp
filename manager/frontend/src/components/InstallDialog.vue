@@ -84,7 +84,7 @@ const formValue = ref({
   workspace: null,
   args: [],
   env: {},
-  arguments: {}
+  params: {}
 })
 
 // 工作空间列表
@@ -188,7 +188,7 @@ async function handleConfirm() {
       type: formValue.value.type,
       cmd: fullCommand.value.split('\n').join(' '),
       env: Object.entries(formValue.value.env).map(([key, value]) => `${key}=${value}`),
-      ur: '',
+      url: '',
       params: formValue.value.params
     }
 

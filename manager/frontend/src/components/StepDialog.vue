@@ -2,7 +2,7 @@
   <n-modal
     :show="show"
     @update:show="emit('update:show', $event)"
-    :title="t('workspace.add_service')"
+    :title="t('workspace.add_server')"
     preset="dialog"
     style="width: 800px"
   >
@@ -35,8 +35,14 @@
             </n-input-group>
           </n-space>
 
-          <n-list v-if="searchResults.length > 0">
+          <n-list v-if="searchResults.length > 0" style="height: 400px; overflow-y: auto; padding: 8px 0;" show-divider	clickable hoverable>
             <n-list-item v-for="result in searchResults" :key="result.name">
+              <template #prefix>
+                <n-radio
+                  :checked="selectedServer && selectedServer.name === result.name"
+                  @change="selectServer(result)"
+                />
+              </template>
               <n-thing :title="result.display_name" :description="result.description">
                 <template #description>
                   <n-space vertical size="small">
@@ -57,17 +63,6 @@
                   <n-tag :type="result.type === 'official' ? 'success' : 'warning'">
                     {{ result.type || 'community' }}
                   </n-tag>
-                </template>
-                <template #footer>
-                  <n-space justify="end">
-                    <n-button
-                      size="small"
-                      type="primary"
-                      @click="selectService(result)"
-                    >
-                      {{ t('workspace.select_service') }}
-                    </n-button>
-                  </n-space>
                 </template>
               </n-thing>
             </n-list-item>
@@ -101,11 +96,11 @@
                 v-for="(arg, key) in selectedArguments"
                 :key="key"
                 :label="key"
-                :path="`arguments.${key}`"
+                :path="`params.${key}`"
                 :required="arg.required"
               >
                 <n-input
-                  v-model:value="formValue.arguments[key]"
+                  v-model:value="formValue.params[key]"
                   :placeholder="arg.example || ''"
                 />
                 <template #feedback>
@@ -131,7 +126,7 @@
           type="primary"
           @click="currentStep === 0 ? nextStep() : handleConfirm()"
           :loading="installing"
-          :disabled="currentStep === 0 && !selectedService"
+          :disabled="currentStep === 0 && !selectedServer"
         >
           {{ currentStep === 0 ? t('workspace.next') : t('install.confirm') }}
         </n-button>
@@ -165,7 +160,7 @@ const stepStatus = ref('process')
 const searchQuery = ref('')
 const searched = ref(false)
 const selectedCategory = ref(null)
-const selectedService = ref(null)
+const selectedServer = ref(null)
 
 // 将servers对象转换为数组
 const serverList = computed(() => {
@@ -235,13 +230,13 @@ function performSearch() {
 }
 
 // 选择服务
-function selectService(service) {
-  selectedService.value = service
+function selectServer(server) {
+  selectedServer.value = server
 }
 
 // 下一步
 function nextStep() {
-  if (!selectedService.value) return
+  if (!selectedServer.value) return
   currentStep.value++
 }
 
@@ -249,14 +244,14 @@ function nextStep() {
 const formValue = ref({
   type: null,
   args: [],
-  env: {},
-  arguments: {}
+  env: [],
+  params: {}
 })
 
 // 安装类型选项
 const installationTypes = computed(() => {
-  if (!selectedService.value?.installations) return []
-  return Object.entries(selectedService.value.installations).map(([key, value]) => ({
+  if (!selectedServer.value?.installations) return []
+  return Object.entries(selectedServer.value.installations).map(([key, value]) => ({
     label: key.toUpperCase(),
     value: key
   }))
@@ -264,13 +259,13 @@ const installationTypes = computed(() => {
 
 // 当前选择的安装配置
 const selectedInstallation = computed(() => {
-  if (!formValue.value.type || !selectedService.value?.installations) return null
-  return selectedService.value.installations[formValue.value.type]
+  if (!formValue.value.type || !selectedServer.value?.installations) return null
+  return selectedServer.value.installations[formValue.value.type]
 })
 
 // 参数说明
 const selectedArguments = computed(() => {
-  return selectedService.value?.arguments || {}
+  return selectedServer.value?.arguments || {}
 })
 
 // 表单验证规则
@@ -290,18 +285,18 @@ const fullCommand = computed(() => {
 
 // 处理安装类型变更
 function handleTypeChange(type) {
-  const installation = selectedService.value?.installations?.[type]
+  const installation = selectedServer.value?.installations?.[type]
   if (!installation) return
 
   // 重置表单数据
   formValue.value.args = [...(installation.args || [])]
-  formValue.value.env = {}
-  formValue.value.arguments = {}
+  formValue.value.env = []
+  formValue.value.params = {}
   
   // 初始化参数
-  if (selectedService.value?.arguments) {
-    Object.keys(selectedService.value.arguments).forEach(key => {
-      formValue.value.arguments[key] = ''
+  if (selectedServer.value?.fullCommand) {
+    Object.keys(selectedServer.value.params).forEach(key => {
+      formValue.value.params[key] = ''
     })
   }
 }
@@ -309,12 +304,12 @@ function handleTypeChange(type) {
 // 处理取消
 function handleCancel() {
   currentStep.value = 0
-  selectedService.value = null
+  selectedServer.value = null
   formValue.value = {
     type: null,
     args: [],
     env: {},
-    arguments: {}
+    params: {}
   }
   emit('update:show', false)
 }
@@ -327,12 +322,11 @@ async function handleConfirm() {
 
     // 发送安装事件
     emit('confirm', {
-      service: selectedService.value,
-      config: {
-        type: formValue.value.type,
-        args: formValue.value.args,
-        env: formValue.value.env
-      }
+      name: selectedServer.value.name,
+      type: formValue.value.type,
+      cmd: fullCommand.value.split("\n").join(" "),
+      args: formValue.value.args,
+      env: formValue.value.env
     })
 
     message.success(t('install.success'))

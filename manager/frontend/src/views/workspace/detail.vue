@@ -10,7 +10,7 @@
     <n-space vertical size="large">
       <n-space justify="space-between" align="center">
         <n-button type="primary" @click="showAddDialog = true">
-            {{ t('workspace.add_service') }}
+            {{ t('workspace.add_server') }}
           </n-button>
         <n-space>
           <n-button type="success" @click="handleStartAll" :loading="loading">
@@ -31,6 +31,7 @@
         :pagination="{ pageSize: 10 }"
       />
     </n-space>
+    <StepDialog v-model:show="showAddDialog" @confirm="handleAddServerConfig"/>
   </n-card>
 </template>
 
@@ -45,14 +46,18 @@
 </style>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useI18n } from 'vue-i18n'
-import { useRoute } from 'vue-router'
-import { h } from 'vue'
-import {NCard, NSpace, NH1, NDescriptions, NDescriptionsItem, NDataTable, NButton, NTooltip} from 'naive-ui'
+import {h, onMounted, ref} from 'vue'
+import {useI18n} from 'vue-i18n'
+import {useRoute} from 'vue-router'
+import {NButton, NCard, NDataTable, NSpace, NTooltip} from 'naive-ui'
 import StepDialog from '@/components/StepDialog.vue'
-import { GetWorkspace, SaveServerConfig, DeleteServerConfig } from '../../../wailsjs/go/bind/Data'
-import { GetWorkspaceServerInstances, StartWorkspace, StopServerInstance, StartServerInstance } from '../../../wailsjs/go/bind/Manager'
+import {DeleteServerConfig, GetWorkspace, SaveServerConfig} from '../../../wailsjs/go/bind/Data'
+import {
+  GetWorkspaceServerInstances,
+  StartServerInstance,
+  StartWorkspace,
+  StopServerInstance
+} from '../../../wailsjs/go/bind/Manager'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -67,20 +72,27 @@ const columns = [
     title: t('instances.name'),
     key: 'config.name',
     render(row) {
-      return h(NSpace,{}, {
-        default: () => [
+      if (row.status === 'started') {
+        return h(NSpace,{}, {
+          default: () => [
             h(NTooltip, {}, {
               trigger: () => [
-                  row.config.name
-              ]
+                row.config.name
+              ],
+              content: () => {
+
+              }
             })
-        ]
-      });
+          ]
+        });
+      } else {
+        return row.config.name;
+      }
     }
   },
   {
     title: t('instances.type'),
-    key: 'type'
+    key: 'config.transport'
   },
   {
     title: t('instances.status'),
@@ -89,7 +101,7 @@ const columns = [
   {
     title: t('instances.actions'),
     key: 'actions',
-    width: 220,
+    width: 280,
     render(row) {
       return h(NSpace, {}, {
         default: () => [
@@ -98,7 +110,7 @@ const columns = [
             size: 'small',
             onClick: () => handleStartInstance(row.id),
             loading: loading.value,
-            disabled: row.status === 'running'
+            disabled: row.status === 'started'
           }, { default: () => t('instances.start') }),
           h(NButton, {
             type: 'warning',
@@ -111,7 +123,8 @@ const columns = [
             type: 'error',
             size: 'small',
             onClick: () => handleDeleteInstance(row.id),
-            loading: loading.value
+            loading: loading.value,
+            disabled: row.status === 'started'
           }, { default: () => t('instances.delete') })
         ]
       })
@@ -142,13 +155,12 @@ async function handleAddServerConfig(data) {
     const workspaceId = route.params.id
     await SaveServerConfig({
       workspace: workspaceId,
-      config: data
+      ...data
     })
     // 重新获取实例列表
-    const instancesRes = await GetWorkspaceServerInstances(workspaceId)
-    instances.value = instancesRes
+    instances.value = await GetWorkspaceServerInstances(workspaceId)
   } catch (error) {
-    console.error('Failed to add service:', error)
+    console.error('Failed to add server:', error)
   }
 }
 
@@ -161,7 +173,7 @@ async function handleStartAll() {
     const instancesRes = await GetWorkspaceServerInstances(workspaceId)
     instances.value = instancesRes
   } catch (error) {
-    console.error('Failed to start all services:', error)
+    console.error('Failed to start all servers:', error)
   } finally {
     loading.value = false
   }
@@ -176,7 +188,7 @@ async function handleStopAll() {
     const instancesRes = await GetWorkspaceServerInstances(route.params.id)
     instances.value = instancesRes
   } catch (error) {
-    console.error('Failed to stop all services:', error)
+    console.error('Failed to stop all servers:', error)
   } finally {
     loading.value = false
   }
