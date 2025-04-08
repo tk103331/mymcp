@@ -14,6 +14,7 @@ var (
 	httpServer *http.Server
 	httpRouter *mux.Router
 	httpMutex  sync.Mutex
+	sseServers = make(map[string]*proxy.SSEServer) // 使用配置ID作为key
 )
 
 func InitHttpServer() {
@@ -24,7 +25,7 @@ func InitHttpServer() {
 	if err != nil {
 		return
 	}
-
+	log.Println("init http server: " + settings.BaseURL)
 	host, port, err := settings.ParseBaseURL()
 	if err != nil {
 		return
@@ -47,20 +48,16 @@ func InitHttpServer() {
 	}
 
 	for _, workspace := range workspaces {
-		if !workspace.AutoRun {
+		if !workspace.Enabled || !workspace.AutoRun {
 			continue
 		}
-		// 启动工作空间
-		log.Println("自动启动工作空间", workspace.Name)
-		if err := StartWorkspace(workspace.ID); err != nil {
-			continue
-		}
-
-		// 为每个服务实例添加ProxyRoute
-		for _, instance := range instances {
-			log.Println("自动添加ProxyRoute", instance.Config.Name)
-			AddProxyRoute(instance)
-		}
+		go func() {
+			// 启动工作空间
+			log.Println("自动启动工作空间", workspace.Name)
+			if err := StartWorkspace(workspace.ID); err != nil {
+				log.Println("启动工作空间失败", err)
+			}
+		}()
 	}
 }
 
@@ -73,12 +70,33 @@ func AddProxyRoute(proxyServer *proxy.ProxyServer) {
 	if err != nil {
 		return
 	}
-
+	basePath := proxyServer.ID
 	sseServer := proxy.NewSSEServer(proxyServer,
-		proxy.WithBaseURL(settings.BaseURL), proxy.WithBasePath(""),
+		proxy.WithBaseURL(settings.BaseURL), proxy.WithBasePath(basePath),
 	)
+
+	// 保存SSE服务器
+	sseServers[proxyServer.ID] = sseServer
+
 	httpRouter.Handle(sseServer.CompleteSsePath(), sseServer)
 	httpRouter.Handle(sseServer.CompleteMessagePath(), sseServer)
+
+	log.Printf("Serve %s[%s] on %s\n", proxyServer.ServerInfo, proxyServer.ID, sseServer.CompleteSseEndpoint())
+}
+
+func RemoveProxyRoute(proxyServer *proxy.ProxyServer) {
+	httpMutex.Lock()
+	defer httpMutex.Unlock()
+
+	sseServer, ok := sseServers[proxyServer.ID]
+	if !ok {
+		return
+	}
+	// 移除ProxyRoute
+	httpRouter.Handle(sseServer.CompleteSsePath(), nil)
+	httpRouter.Handle(sseServer.CompleteMessagePath(), nil)
+	// 删除SSE服务器
+	delete(sseServers, proxyServer.ID)
 }
 
 func StartHttpServer() error {

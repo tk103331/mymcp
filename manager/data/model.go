@@ -53,19 +53,5 @@ func (s *Settings) ParseBaseURL() (host string, port string, err error) {
 		return "", "", fmt.Errorf("invalid BaseURL: %v", err)
 	}
 
-	host = u.Hostname()
-	port = u.Port()
-
-	if port == "" {
-		switch u.Scheme {
-		case "http":
-			port = "80"
-		case "https":
-			port = "443"
-		default:
-			return "", "", fmt.Errorf("unsupported scheme: %s", u.Scheme)
-		}
-	}
-
-	return host, port, nil
+	return u.Hostname(), u.Port(), nil
 }

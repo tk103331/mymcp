@@ -32,7 +32,7 @@ func (m *Manager) GetServerInstance(serverID string) (*data.ServerInstance, erro
 	return manager.GetServerInstance(serverID)
 }
 
-// GetWorkspaceServers 获取工作空间关联的服务配置列表
+// GetWorkspaceServerInstances 获取工作空间关联的服务配置列表
 func (d *Manager) GetWorkspaceServerInstances(workspaceID string) ([]*data.ServerInstance, error) {
 	servers, err := data.GetWorkspaceServerConfigs(workspaceID)
 	if err != nil {

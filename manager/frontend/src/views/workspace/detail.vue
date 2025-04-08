@@ -49,7 +49,7 @@ import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import { h } from 'vue'
-import { NCard, NSpace, NH1, NDescriptions, NDescriptionsItem, NDataTable, NButton } from 'naive-ui'
+import {NCard, NSpace, NH1, NDescriptions, NDescriptionsItem, NDataTable, NButton, NTooltip} from 'naive-ui'
 import StepDialog from '@/components/StepDialog.vue'
 import { GetWorkspace, SaveServerConfig, DeleteServerConfig } from '../../../wailsjs/go/bind/Data'
 import { GetWorkspaceServerInstances, StartWorkspace, StopServerInstance, StartServerInstance } from '../../../wailsjs/go/bind/Manager'
@@ -65,7 +65,18 @@ const showAddDialog = ref(false)
 const columns = [
   {
     title: t('instances.name'),
-    key: 'name'
+    key: 'config.name',
+    render(row) {
+      return h(NSpace,{}, {
+        default: () => [
+            h(NTooltip, {}, {
+              trigger: () => [
+                  row.config.name
+              ]
+            })
+        ]
+      });
+    }
   },
   {
     title: t('instances.type'),
@@ -78,7 +89,7 @@ const columns = [
   {
     title: t('instances.actions'),
     key: 'actions',
-    width: 200,
+    width: 220,
     render(row) {
       return h(NSpace, {}, {
         default: () => [

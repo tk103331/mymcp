@@ -19,6 +19,7 @@ type ProxyServer struct {
 	BaseUrl    string
 	BasePath   string
 	Status     string
+	Error      string
 	ServerInfo mcp.Implementation
 	Client     client.MCPClient
 	Config     *data.ServerConfig
@@ -26,14 +27,19 @@ type ProxyServer struct {
 
 func NewProxyServer(cfg *data.ServerConfig) (*ProxyServer, error) {
 	proxyServer := &ProxyServer{
+		ID:     cfg.ID,
 		Config: cfg,
 	}
 
 	err := proxyServer.initClient()
 	if err != nil {
-		return nil, err
+		proxyServer.Status = "error"
+		proxyServer.Error = err.Error()
+	} else {
+		proxyServer.MCPServer = server.NewMCPServer(proxyServer.ServerInfo.Name, proxyServer.ServerInfo.Version)
+		proxyServer.Status = "started"
 	}
-	proxyServer.MCPServer = server.NewMCPServer(proxyServer.ServerInfo.Name, proxyServer.ServerInfo.Version)
+
 	return proxyServer, nil
 }
 

@@ -6,8 +6,6 @@ import (
 
 	"mcphosting/manager/data"
 	"mcphosting/manager/proxy"
-
-	"github.com/google/uuid"
 )
 
 var (
@@ -32,9 +30,11 @@ func StartWorkspace(workspaceID string) error {
 
 	// 启动所有服务
 	for _, cfg := range configs {
-		if _, err := NewServerInstance(cfg); err != nil {
-			return fmt.Errorf("启动服务[%s]失败: %v", cfg.Name, err)
-		}
+		go func() {
+			if _, err := NewServerInstance(cfg); err != nil {
+				fmt.Println("启动服务[%s]失败: %v", cfg.Name, err)
+			}
+		}()
 	}
 
 	return nil
@@ -45,10 +45,8 @@ func NewServerInstance(cfg *data.ServerConfig) (*data.ServerInstance, error) {
 	instanceMutex.Lock()
 	defer instanceMutex.Unlock()
 
-	instanceId := uuid.New().String()
-
 	// 检查服务是否已存在
-	if _, exists := instances[instanceId]; exists {
+	if _, exists := instances[cfg.ID]; exists {
 		return nil, fmt.Errorf("服务[%s]已在运行", cfg.Name)
 	}
 
@@ -57,11 +55,11 @@ func NewServerInstance(cfg *data.ServerConfig) (*data.ServerInstance, error) {
 	if err != nil {
 		return nil, err
 	}
-
+	AddProxyRoute(server)
 	// 保存服务实例
-	instances[instanceId] = server
+	instances[cfg.ID] = server
 	return &data.ServerInstance{
-		ID:         instanceId,
+		ID:         cfg.ID,
 		Config:     cfg,
 		ServerInfo: &server.ServerInfo,
 	}, nil
@@ -88,7 +86,7 @@ func StartServerInstance(instanceID string) error {
 	if err != nil {
 		return err
 	}
-
+	AddProxyRoute(server)
 	// 保存服务实例
 	instances[cfg.ID] = server
 	fmt.Println("Start server instance", instanceID, "success")
@@ -109,7 +107,7 @@ func StopServerInstance(instanceID string) error {
 	if err := server.Client.Close(); err != nil {
 		return fmt.Errorf("关闭服务失败: %v", err)
 	}
-
+	RemoveProxyRoute(server)
 	// 移除服务实例
 	delete(instances, instanceID)
 	fmt.Println("Stop server instance", instanceID, "success")

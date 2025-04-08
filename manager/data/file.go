@@ -266,5 +266,14 @@ func LoadSettings() (*Settings, error) {
 	if err != nil {
 		return nil, err
 	}
+	if settings.Language == "" {
+		settings.Language = "zh"
+	}
+	if settings.Theme == "" {
+		settings.Theme = "light"
+	}
+	if settings.BaseURL == "" {
+		settings.BaseURL = "http://localhost:8421"
+	}
 	return &settings, nil
 }
