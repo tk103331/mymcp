@@ -8,12 +8,17 @@ import (
 )
 
 type Workspace struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Status      string `json:"status"`
-	Description string `json:"description"`
-	Enabled     bool   `json:"enabled"`
-	AutoRun     bool   `json:"autoRun"`
+	ID             string                   `json:"id"`
+	Name           string                   `json:"name"`
+	Status         string                   `json:"status"`
+	Description    string                   `json:"description"`
+	Enabled        bool                     `json:"enabled"`
+	AutoRun        bool                     `json:"autoRun"`
+	ManagedClients map[string]ManagedClient `json:"managedClients"`
+}
+
+type ManagedClient struct {
+	Config string `json:"config"`
 }
 
 type ServerInstance struct {
@@ -22,6 +27,7 @@ type ServerInstance struct {
 	Status     string              `json:"status"`
 	Error      string              `json:"error"`
 	ServerInfo *mcp.Implementation `json:"serverInfo"`
+	Endpoint   string              `json:"endpoint"`
 }
 
 type ServerConfig struct {

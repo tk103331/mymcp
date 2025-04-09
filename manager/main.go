@@ -2,10 +2,11 @@ package main
 
 import (
 	"embed"
+	"mcphosting/manager/bind"
+
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
-	"mcphosting/manager/bind"
 )
 
 //go:embed all:frontend/dist
@@ -26,6 +27,7 @@ func main() {
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
 		OnStartup:        app.startup,
 		Bind: []interface{}{
+			&bind.Common{},
 			&bind.Data{},
 			&bind.Manager{},
 			&bind.Setting{},

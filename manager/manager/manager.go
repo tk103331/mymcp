@@ -9,8 +9,8 @@ import (
 )
 
 var (
-	instanceMutex sync.RWMutex
-	instances     = make(map[string]*proxy.ProxyServer) // 使用配置ID作为key
+	proxyMutex   sync.RWMutex
+	proxyServers = make(map[string]*proxy.ProxyServer) // 使用配置ID作为key
 )
 
 // StartWorkspace 加载工作空间并启动其中的所有服务
@@ -42,11 +42,11 @@ func StartWorkspace(workspaceID string) error {
 
 // NewServerInstance 启动单个服务
 func NewServerInstance(cfg *data.ServerConfig) (*data.ServerInstance, error) {
-	instanceMutex.Lock()
-	defer instanceMutex.Unlock()
+	proxyMutex.Lock()
+	defer proxyMutex.Unlock()
 
 	// 检查服务是否已存在
-	if _, exists := instances[cfg.ID]; exists {
+	if _, exists := proxyServers[cfg.ID]; exists {
 		return nil, fmt.Errorf("服务[%s]已在运行", cfg.Name)
 	}
 
@@ -57,7 +57,7 @@ func NewServerInstance(cfg *data.ServerConfig) (*data.ServerInstance, error) {
 	}
 	AddProxyRoute(server)
 	// 保存服务实例
-	instances[cfg.ID] = server
+	proxyServers[cfg.ID] = server
 	return &data.ServerInstance{
 		ID:         cfg.ID,
 		Config:     cfg,
@@ -67,11 +67,11 @@ func NewServerInstance(cfg *data.ServerConfig) (*data.ServerInstance, error) {
 
 // NewServerStartServerInstanceInstance 启动单个服务
 func StartServerInstance(instanceID string) error {
-	instanceMutex.Lock()
-	defer instanceMutex.Unlock()
+	proxyMutex.Lock()
+	defer proxyMutex.Unlock()
 	fmt.Println("Start server instance", instanceID)
 	// 检查服务是否已存在
-	if _, exists := instances[instanceID]; exists {
+	if _, exists := proxyServers[instanceID]; exists {
 		return fmt.Errorf("服务[%s]已在运行", instanceID)
 	}
 
@@ -88,17 +88,17 @@ func StartServerInstance(instanceID string) error {
 	}
 	AddProxyRoute(server)
 	// 保存服务实例
-	instances[cfg.ID] = server
+	proxyServers[cfg.ID] = server
 	fmt.Println("Start server instance", instanceID, "success")
 	return nil
 }
 
 // StopServerInstance 停止服务
 func StopServerInstance(instanceID string) error {
-	instanceMutex.Lock()
-	defer instanceMutex.Unlock()
+	proxyMutex.Lock()
+	defer proxyMutex.Unlock()
 	fmt.Println("Stop server instance", instanceID)
-	server, exists := instances[instanceID]
+	server, exists := proxyServers[instanceID]
 	if !exists {
 		return fmt.Errorf("服务不存在")
 	}
@@ -109,24 +109,31 @@ func StopServerInstance(instanceID string) error {
 	}
 	RemoveProxyRoute(server)
 	// 移除服务实例
-	delete(instances, instanceID)
+	delete(proxyServers, instanceID)
 	fmt.Println("Stop server instance", instanceID, "success")
 	return nil
 }
 
 // GetServerInstance 获取服务实例
 func GetServerInstance(instanceID string) (*data.ServerInstance, error) {
-	instanceMutex.RLock()
-	defer instanceMutex.RUnlock()
+	proxyMutex.RLock()
+	defer proxyMutex.RUnlock()
 
-	server, exists := instances[instanceID]
-	if !exists {
-		return nil, fmt.Errorf("服务不存在")
+	instance := &data.ServerInstance{
+		ID: instanceID,
 	}
-	return &data.ServerInstance{
-		ID:         instanceID,
-		Config:     server.Config,
-		Status:     server.Status,
-		ServerInfo: &server.ServerInfo,
-	}, nil
+
+	server, exists := proxyServers[instanceID]
+	if !exists {
+		return instance, nil
+	}
+	instance.Config = server.Config
+	instance.ServerInfo = &server.ServerInfo
+	instance.Status = server.Status
+	sseServer, exists := sseServers[instanceID]
+	if !exists {
+		return instance, nil
+	}
+	instance.Endpoint = sseServer.CompleteSseEndpoint()
+	return instance, nil
 }

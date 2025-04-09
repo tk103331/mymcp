@@ -9,6 +9,8 @@
   },
   "dependencies": {
     "@vicons/ionicons5": "^0.13.0",
+    "@vueuse/core": "^13.1.0",
+    "highlight.js": "^11.11.1",
     "naive-ui": "^2.41.0",
     "pinia": "^3.0.1",
     "vue": "^3.3.0",

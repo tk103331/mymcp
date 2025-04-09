@@ -10,7 +10,17 @@ export default {
     start: 'Start',
     stop: 'Stop',
     create: 'Create Instance',
-    delete: 'Delete'
+    delete: 'Delete',
+    connnect_config: 'Connect Configuration',
+    endpoint: 'Endpoint',
+    copy: 'Copy',
+    copy_success: 'Copied to clipboard',
+    copy_failed: 'Copy failed',
+    config_file: 'Configuration File',
+    copy_success: 'Copied to clipboard',
+    config_location: 'Configuration File Location',
+    no_config_file: 'No configuration file required',
+    config: 'Configuration'
   },
   workspace: {
     title: 'Workspaces',
@@ -28,6 +38,9 @@ export default {
     next: 'Next',
     empty_description: 'No workspaces',
     create_modal_title: 'Create Workspace',
+    config: 'Config',
+    config_title: 'Workspace Configuration',
+    manage_config: 'Manage Configuration',
     form: {
       name_label: 'Name',
       name_placeholder: 'Enter workspace name',

@@ -10,5 +10,6 @@ export default defineConfig({
       '@': resolve(__dirname, 'src'), // 将 @ 映射到 src 目录
     },
   },
+  publicDir: 'public',
   plugins: [vue()]
 })

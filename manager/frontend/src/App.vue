@@ -1,5 +1,5 @@
 <template>
-  <n-config-provider>
+  <n-config-provider :hljs="hljs">
     <n-message-provider>
       <n-notification-provider>
         <n-dialog-provider>
@@ -15,8 +15,12 @@
 </template>
 
 <script setup>
+import hljs from 'highlight.js/lib/core'
+import json from 'highlight.js/lib/languages/json'
 import MainLayout from './views/layouts/MainLayout.vue'
 // 组件逻辑
+
+hljs.registerLanguage('json', json)
 </script>
 
 <style>
