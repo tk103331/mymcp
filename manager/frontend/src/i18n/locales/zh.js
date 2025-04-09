@@ -42,6 +42,8 @@ export default {
     config: '配置',
     config_title: '工作空间配置',
     manage_config: '管理配置',
+    sync_config: '同步配置',
+    managed_config: '托管配置',
     form: {
       name_label: '名称',
       name_placeholder: '输入工作空间名称',

@@ -41,6 +41,8 @@ export default {
     config: 'Config',
     config_title: 'Workspace Configuration',
     manage_config: 'Manage Configuration',
+    sync_config: 'Sync Configuration',
+    managed_config: 'Managed Configuration',
     form: {
       name_label: 'Name',
       name_placeholder: 'Enter workspace name',

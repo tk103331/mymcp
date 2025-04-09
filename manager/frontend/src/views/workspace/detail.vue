@@ -11,7 +11,7 @@
         </n-space>
         <n-space>
           <n-space v-if="workspace.managedClients" align="center">
-            <n-text>托管配置：</n-text>
+            <n-text>{{ t('workspace.managed_config') }}</n-text>
             <n-tooltip v-for="client in supportClients.filter(c => isClientManaged(c))" :key="client.name">
               <template #trigger>
                 <img 
@@ -29,13 +29,11 @@
                   />
                   <n-text>{{ client.label }}</n-text>
                 </div>
-                <n-text type="info">{{ workspace.managedClients[client.name].config }}</n-text>
+                <n-text type="info">{{ t('workspace.config_file_location') }}: {{ workspace.managedClients[client.name].config }}</n-text>
               </template>
             </n-tooltip>
-            <n-button type="info" @click="syncAllManagedClientConfig" circle size="small">
-              <n-icon>
-                <RefreshOutline />
-              </n-icon>
+            <n-button type="info" @click="syncAllManagedClientConfig" >
+              {{ t('workspace.sync_config') }}
             </n-button>
           </n-space>
         </n-space>
@@ -98,7 +96,7 @@
                   {{ client.configFile[osInfo.os]}}
                 </n-text>
                 <n-text v-else type="warning">
-                  暂不支持配置托管
+                  {{ t('workspace.no_config_support') }}
                 </n-text>
               </n-space>
               <div style="position:relative;">
