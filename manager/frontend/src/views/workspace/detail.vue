@@ -3,16 +3,14 @@
     <template #header>
       <n-space justify="space-between" align="center">
         <n-space vertical>
+          <n-space>
           <span class="title">{{ workspace.name }}</span>
+
+          </n-space>
           <span class="description">{{ workspace.description }}</span>
         </n-space>
         <n-space>
           <n-space v-if="workspace.managedClients" align="center">
-            <n-button type="info" @click="syncAllManagedClientConfig" circle size="small">
-              <n-icon>
-                <RefreshOutline />
-              </n-icon>
-            </n-button>
             <n-text>托管配置：</n-text>
             <n-tooltip v-for="client in supportClients.filter(c => isClientManaged(c))" :key="client.name">
               <template #trigger>
@@ -34,19 +32,27 @@
                 <n-text type="info">{{ workspace.managedClients[client.name].config }}</n-text>
               </template>
             </n-tooltip>
+            <n-button type="info" @click="syncAllManagedClientConfig" circle size="small">
+              <n-icon>
+                <RefreshOutline />
+              </n-icon>
+            </n-button>
           </n-space>
-          <n-button type="info" @click="showConfigDialog = true">
-            {{ t('workspace.config') }}
-          </n-button>
         </n-space>
       </n-space>
     </template>
 
     <n-space vertical size="large">
       <n-space justify="space-between" align="center">
-        <n-button type="primary" @click="showAddDialog = true">
+        <n-space> 
+          <n-button type="primary" @click="showAddDialog = true">
             {{ t('workspace.add_server') }}
           </n-button>
+          <n-button type="info" @click="showConfigDialog = true">
+            {{ t('workspace.config') }}
+          </n-button>
+        </n-space>
+
         <n-space>
           <n-button type="success" @click="handleStartAll" :loading="loading">
             {{ t('workspace.start_all') }}
