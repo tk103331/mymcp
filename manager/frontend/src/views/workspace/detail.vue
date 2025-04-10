@@ -428,6 +428,27 @@ const supportClients = [
     }
   },
   {
+    name: 'windsurf',
+    label: 'Windsurf',
+    logo: '/image/windsurf.svg',
+    help: '',
+    configFile: {
+      win: '',
+      mac: '~/.codeium/windsurf/mcp_config.json',
+      linux: ''
+    },
+    configGenerator: (instances) => {
+      return {
+        mcpServers: instances.reduce((acc, instance) => {
+          acc[`${instance.config.name}`] = {
+            serverUrl: instance.endpoint
+          }
+          return acc
+        }, {})
+      }
+    }
+  },
+  {
     name: 'claude',
     label: 'Claude',
     logo: '/image/claude.svg',
