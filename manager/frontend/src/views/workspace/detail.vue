@@ -463,7 +463,13 @@ const supportClients = [
       return {
         mcpServers: instances.reduce((acc, instance) => {
           acc[`${instance.config.name}`] = {
-            url: instance.endpoint
+            command: "mcppipe",
+            args: [
+                "--mode",
+                "sse2stdio",
+                "--url",
+                instance.endpoint
+            ]
           }
           return acc
         }, {})

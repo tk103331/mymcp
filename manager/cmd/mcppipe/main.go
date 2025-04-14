@@ -6,39 +6,41 @@ import (
 	"mcphosting/manager/proxy"
 	"net/url"
 	"os"
+	"strings"
 )
 
 func main() {
-	serveFlag := flag.String("serve", "", "serve on mode, sse/stdio")
-	proxyFlag := flag.String("proxy", "", "proxy to mode, sse/stdio")
+	modeFlag := flag.String("mode", "", "proxy mode, stdio2sse/sse2stdio/sse2sse/stdio2stdio")
 	baseUrlFlag := flag.String("baseUrl", "", "the url serve on")
 	urlFlag := flag.String("url", "", "sse url to proxy to")
 	cmdFlag := flag.String("cmd", "", "stdio command to proxy to")
 	flag.Parse()
 
-	if *serveFlag == "" || *proxyFlag == "" {
-		panic("serve and proxy flag is empty!")
-	} else if *serveFlag != "sse" && *serveFlag != "stdio" {
-		panic("serve flag must be one of stdio/sse !")
-	} else if *proxyFlag != "sse" && *proxyFlag != "stdio" {
-		panic("proxy flag must be one of stdio/sse !")
+	if *modeFlag != "stdio2sse" && *modeFlag != "sse2stdio" && *modeFlag != "sse2sse" && *modeFlag != "stdio2stdio" {
+		panic("proxy mode must be one of stdio2sse/sse2stdio/sse2sse/stdio2stdio")
 	}
+
+	parts := strings.Split(*modeFlag, "2")
+	proxyFlag := parts[0]
+	serveFlag := parts[1]
 
 	cfg := &data.ServerConfig{
 		ID:        "proxy",
 		Workspace: "proxy",
 		Name:      "proxy",
 		Type:      "proxy",
+		Cmd:       *cmdFlag,
+		Url:       *urlFlag,
 	}
 
-	if *proxyFlag == "sse" {
+	if proxyFlag == "sse" {
 		_, err := url.Parse(*urlFlag)
 		if err != nil {
 			panic("url flag invalid: " + err.Error())
 		}
 		cfg.Transport = "sse"
 		cfg.Url = *urlFlag
-	} else if *proxyFlag == "stdio" {
+	} else if proxyFlag == "stdio" {
 		if *cmdFlag == "" {
 			panic("stdio command is empty!")
 		}
@@ -56,7 +58,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	if *serveFlag == "sse" {
+	if serveFlag == "sse" {
 		parsedBaseUrl, err := url.Parse(*baseUrlFlag)
 		if err != nil {
 			panic("baseUrl flag invalid: " + err.Error())
