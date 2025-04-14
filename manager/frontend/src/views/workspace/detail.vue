@@ -411,6 +411,7 @@ const supportClients = [
     name: 'cursor',
     label: 'Cursor',
     logo: '/image/cursor.png',
+    sse: true,
     configFile: {
       win: '',
       mac: '~/.cursor/mcp.json',
@@ -431,7 +432,7 @@ const supportClients = [
     name: 'windsurf',
     label: 'Windsurf',
     logo: '/image/windsurf.svg',
-    help: '',
+    sse: true,
     configFile: {
       win: '',
       mac: '~/.codeium/windsurf/mcp_config.json',
@@ -452,6 +453,7 @@ const supportClients = [
     name: 'claude',
     label: 'Claude',
     logo: '/image/claude.svg',
+    sse: false,
     configFile: {
       win: '%APPDATA%\Claude\claude_desktop_config.json',
       mac: '~/Library/Application Support/Claude/claude_desktop_config.json',
@@ -472,6 +474,7 @@ const supportClients = [
     name: 'chatwise',
     label: 'ChatWise',
     logo: '/image/chatwise.png',
+    sse: true,
     configFile: null,
     configGenerator: (instances) => {
       return {
@@ -488,6 +491,7 @@ const supportClients = [
     name: 'cherrystudio',
     label: 'CherryStudio',
     logo: '/image/cherrystudio.png',
+    sse: true,
     configFile: null,
     configGenerator: (instances) => {
       return {
