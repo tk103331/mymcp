@@ -44,6 +44,7 @@ export default {
     manage_config: '管理配置',
     sync_config: '同步配置',
     managed_config: '托管配置',
+    no_config_support: '无配置文件支持',
     form: {
       name_label: '名称',
       name_placeholder: '输入工作空间名称',

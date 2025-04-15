@@ -43,6 +43,7 @@ export default {
     manage_config: 'Manage Configuration',
     sync_config: 'Sync Configuration',
     managed_config: 'Managed Configuration',
+    no_config_support: 'No configuration file support',
     form: {
       name_label: 'Name',
       name_placeholder: 'Enter workspace name',
