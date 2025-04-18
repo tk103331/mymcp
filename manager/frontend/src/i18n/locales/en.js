@@ -20,7 +20,8 @@ export default {
     copy_success: 'Copied to clipboard',
     config_location: 'Configuration File Location',
     no_config_file: 'No configuration file required',
-    config: 'Configuration'
+    config: 'Configuration',
+    managed_success: 'Configuration synchronized successfully'
   },
   workspace: {
     title: 'Workspaces',
@@ -118,6 +119,8 @@ export default {
       light: 'Light',
       dark: 'Dark'
     },
-    save: 'Save Settings'
+    save: 'Save Settings',
+    workspace: 'Workspace',
+    workspace_required: 'Please select a workspace'
   }
 }

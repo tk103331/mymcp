@@ -22,6 +22,7 @@ export default {
     config_location: '配置文件位置',
     no_config_file: '无配置文件',
     no_config_location: '无配置文件位置',
+    managed_success: '配置同步成功'
   },
   workspace: {
     title: '工作空间',
@@ -121,6 +122,8 @@ export default {
       light: '浅色',
       dark: '深色'
     },
-    save: '保存设置'
+    save: '保存设置',
+    workspace: '工作空间',
+    workspace_required: '请选择工作空间'
   }
 }
