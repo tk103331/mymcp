@@ -175,7 +175,7 @@
 import {h, onMounted, ref} from 'vue'
 import {useI18n} from 'vue-i18n'
 import {useRoute} from 'vue-router'
-import {NButton, NCard, NDataTable, NSpace, NTooltip, NTabs, NTabPane, useMessage, NIcon} from 'naive-ui'
+import {NButton, NCard, NDataTable, NSpace, NTooltip, NTabs, NTabPane, useMessage, NIcon, c} from 'naive-ui'
 import StepDialog from '@/components/StepDialog.vue'
 import {DeleteServerConfig, GetWorkspace, SaveServerConfig, SaveWorkspace} from '../../../wailsjs/go/bind/Data'
 import {
@@ -511,6 +511,36 @@ const supportClients = [
         }, {})
       }
     }
+  },
+  {
+    name: 'deepchat',
+    label: 'DeepChat',
+    logo: '/image/deepchat.png',
+    sse: true,
+    configFile: {
+      win: '%APPDATA%\DeepChat/mcp-settings.json',
+      mac: '~/Library/Application Support/DeepChat/mcp-settings.json',
+      linux: ''
+    },
+    configProperty: 'mcpServers',
+    configGenerator: (instances) => {
+      return {
+        mcpServers: instances.reduce((acc, instance) => {
+          acc[`${instance.config.name}-${instance.config.id}`] = {
+            type: "sse",
+            icons: "🛠️",
+            baseUrl: instance.endpoint,
+            descriptions: "From MyMCP",
+            command: '',
+            args: [],
+            env: {},
+            disable: false,
+            autoApprove: ['all']
+          }
+          return acc
+        }, {})
+      }
+    }
   }
 ];
 
@@ -560,8 +590,17 @@ async function updateManagedClients(client, isManaged) {
 async function saveManagedClientConfig(client) {
   if (client && client.configFile) {
       const configFilePath = client.configFile[osInfo.value.os];
-      const config = client.configGenerator(instances.value);
-      await WriteFile(configFilePath, JSON.stringify(config, null, 2));
+      if (!configFilePath) {
+        return;
+      }
+      const configFileContent = await ReadFile(configFilePath);
+      const configObject = JSON.parse(configFileContent);
+      if (client.configProperty) {
+        Object.assign(configObject[client.configProperty], client.configGenerator(instances.value)[client.configProperty]);
+      } else {
+        Object.assign(configObject, client.configGenerator(instances.value));
+      }
+      await WriteFile(configFilePath, JSON.stringify(configObject, null, 2));
   }
 }
 
