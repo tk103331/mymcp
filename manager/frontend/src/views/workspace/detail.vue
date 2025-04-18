@@ -417,6 +417,29 @@ const supportClients = [
       mac: '~/.cursor/mcp.json',
       linux: ''
     },
+    configProperty: 'mcpServers',
+    configGenerator: (instances) => {
+      return {
+        mcpServers: instances.reduce((acc, instance) => {
+          acc[`${instance.config.name}`] = {
+            url: instance.endpoint
+          }
+          return acc
+        }, {})
+      }
+    }
+  },
+  {
+    name: 'joycoder',
+    label: 'JoyCoder',
+    logo: '/image/joycoder.png',
+    sse: true,
+    configFile: {
+      win: '',
+      mac: '~/.joycoder/joycoder-mcp.json',
+      linux: ''
+    },
+    configProperty: 'mcpServers',
     configGenerator: (instances) => {
       return {
         mcpServers: instances.reduce((acc, instance) => {
@@ -438,6 +461,7 @@ const supportClients = [
       mac: '~/.codeium/windsurf/mcp_config.json',
       linux: ''
     },
+    configProperty: 'mcpServers',
     configGenerator: (instances) => {
       return {
         mcpServers: instances.reduce((acc, instance) => {
@@ -459,6 +483,7 @@ const supportClients = [
       mac: '~/Library/Application Support/Claude/claude_desktop_config.json',
       linux: ''
     },
+    configProperty: 'mcpServers',
     configGenerator: (instances) => {
       return {
         mcpServers: instances.reduce((acc, instance) => {
