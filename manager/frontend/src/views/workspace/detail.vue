@@ -10,30 +10,21 @@
           <span class="description">{{ workspace.description }}</span>
         </n-space>
         <n-space>
-          <n-space v-if="workspace.managedClients" align="center">
-            <n-text>{{ t('workspace.managed_config') }}</n-text>
-            <n-tooltip v-for="client in supportClients.filter(c => isClientManaged(c))" :key="client.name">
+          <n-space v-if="workspace.managedClients" align="center" style="border: solid 1px gray;border-radius:5px;">
+            <n-tooltip v-for="client in supportClients.filter(c => isClientManaged(c))" :key="client.name" >
               <template #trigger>
                 <img 
                   :src="client.logo" 
                   alt="logo" 
-                  style="width: 22px; height: 22px; margin-right: 4px;cursor: pointer;"
+                  style="width: 28px; height:28px; margin-right: 4px;cursor: pointer;"
                 />
               </template>
-              <template #content>
-                <div>
-                  <img 
-                    :src="client.logo" 
-                    alt="logo" 
-                    style="width: 16px; height:16px; margin-right: 4px;"
-                  />
-                  <n-text>{{ client.label }}</n-text>
-                </div>
-                <n-text type="info">{{ t('workspace.config_file_location') }}: {{ workspace.managedClients[client.name].config }}</n-text>
-              </template>
+              <span>{{ client.label }}</span>
             </n-tooltip>
-            <n-button type="info" @click="syncAllManagedClientConfig" >
-              {{ t('workspace.sync_config') }}
+            <n-button quaternary @click="syncAllManagedClientConfig" >
+              <n-icon>
+                <RefreshOutline />
+              </n-icon>
             </n-button>
           </n-space>
         </n-space>
@@ -73,7 +64,7 @@
     <StepDialog v-model:show="showAddDialog" @confirm="handleAddServerConfig"/>
     <n-modal v-model:show="showConfigDialog" :title="t('workspace.config_title')" style="width: 800px">
       <n-card>
-        <n-tabs type="line">
+        <n-tabs type="card" placement="left" style="height:540px;">
           <n-tab-pane 
             v-for="client in supportClients" 
             :key="client.name"
@@ -81,8 +72,8 @@
             :tab="client.label"
           >
             <template #tab>
-              <n-space align="center">
-                <img :src="client.logo" alt="logo" style="width: 18px; height: 18px;">
+              <n-space align="center" style="width:130px;">
+                <img :src="client.logo" alt="logo" style="width: 24px; height: 24px;">
                 <n-text>{{ client.label }}</n-text>
               </n-space>
             </template>
@@ -108,7 +99,7 @@
                 >
                   {{ t('instances.copy') }}
                 </n-button>
-                <div style="overflow: auto;border: solid 1px lightgray;height:500px;">
+                <div style="overflow: auto;border: solid 1px lightgray;width:580px;height:500px;">
                   <n-code :code="JSON.stringify(client.configGenerator(instances), null, 2)" language="json" :show-line="true" />
                 </div>
               </div>
@@ -117,14 +108,21 @@
         </n-tabs>
       </n-card>
     </n-modal>
-    <n-modal v-model:show="showInstanceConnectDialog" :title="t('instances.connnect_config')" style="width: 600px">
+    <n-modal v-model:show="showInstanceConnectDialog" :title="t('instances.connnect_config')" style="width: 800px">
       <n-card>
-        <n-text>{{ t('instances.endpoint') }}</n-text>
-        <n-input :value="currentInstance.endpoint" readonly style="width: 300px" />
-        <n-button @click="copyInstanceEndpoint">
-          {{ t('instances.copy') }}
-        </n-button>
-        <n-tabs type="line" >
+        
+        <n-input :value="currentInstance.endpoint" readonly style="width: 775px;margin-bottom: 10px;">
+          <template #prefix>
+            <n-text style="font-weight:700;">{{ t('instances.endpoint') }}：</n-text>
+          </template>
+          <template #suffix>
+            <n-button @click="copyInstanceEndpoint" type="primary" text>
+              {{ t('instances.copy') }}
+            </n-button>
+          </template>
+        </n-input>
+
+        <n-tabs type="card" placement="left">
           <n-tab-pane 
             v-for="client in supportClients" 
             :key="client.name"
@@ -132,8 +130,8 @@
             :tab="client.label"
           >
             <template #tab>
-              <n-space align="center">
-                <img :src="client.logo" alt="logo" style="width: 18px; height: 18px;">
+              <n-space align="center" style="width:130px;">
+                <img :src="client.logo" alt="logo" style="width: 24px; height: 24px;">
                 <n-text>{{ client.label }}</n-text>
               </n-space>
             </template>
@@ -148,7 +146,7 @@
                   >
                     {{ t('instances.copy') }}
                   </n-button>
-                  <div style="overflow: auto;border: solid 1px lightgray;height:300px;">
+                  <div style="overflow: auto;border: solid 1px lightgray;width:580px;height:500px;">
                     <n-code :code="JSON.stringify(client.configGenerator([currentInstance]), null, 2)" language="json" />
                   </div>
                 </div>
@@ -454,7 +452,7 @@ const supportClients = [
   {
     name: 'windsurf',
     label: 'Windsurf',
-    logo: '/image/windsurf.svg',
+    logo: '/image/windsurf.png',
     sse: true,
     configFile: {
       win: '',
@@ -476,7 +474,7 @@ const supportClients = [
   {
     name: 'claude',
     label: 'Claude',
-    logo: '/image/claude.svg',
+    logo: '/image/claude.png',
     sse: false,
     configFile: {
       win: '%APPDATA%\Claude\claude_desktop_config.json',
@@ -554,11 +552,8 @@ const supportClients = [
           acc[`${instance.config.name}-${instance.config.id}`] = {
             type: "sse",
             icons: "🛠️",
-            baseUrl: instance.endpoint,
+            url: instance.endpoint,
             descriptions: "From MyMCP",
-            command: '',
-            args: [],
-            env: {},
             disable: false,
             autoApprove: ['all']
           }
