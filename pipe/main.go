@@ -2,11 +2,12 @@ package main
 
 import (
 	"flag"
-	"mcphosting/manager/data"
-	"mcphosting/manager/proxy"
 	"net/url"
 	"os"
 	"strings"
+
+	"github.com/tk103331/mymcp/pkg/common"
+	"github.com/tk103331/mymcp/pkg/proxy"
 )
 
 func main() {
@@ -24,7 +25,7 @@ func main() {
 	proxyFlag := parts[0]
 	serveFlag := parts[1]
 
-	cfg := &data.ServerConfig{
+	cfg := &common.ServerConfig{
 		ID:        "proxy",
 		Workspace: "proxy",
 		Name:      "proxy",

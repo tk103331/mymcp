@@ -2,7 +2,8 @@ package bind
 
 import (
 	"context"
-	"mcphosting/manager/data"
+
+	"github.com/tk103331/mymcp/manager/data"
 )
 
 type Setting struct {

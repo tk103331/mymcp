@@ -2,8 +2,9 @@ package main
 
 import (
 	"context"
+
 	"github.com/labstack/gommon/log"
-	"mcphosting/manager/manager"
+	"github.com/tk103331/mymcp/manager/manager"
 )
 
 // App struct

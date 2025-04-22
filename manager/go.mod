@@ -1,4 +1,4 @@
-module mcphosting/manager
+module github.com/tk103331/mymcp/manager
 
 go 1.23
 

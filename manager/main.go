@@ -2,7 +2,8 @@ package main
 
 import (
 	"embed"
-	"mcphosting/manager/bind"
+
+	"github.com/tk103331/mymcp/manager/bind"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"

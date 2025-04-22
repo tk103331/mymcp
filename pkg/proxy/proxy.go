@@ -5,8 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"mcphosting/manager/data"
 	"strings"
+
+	"github.com/tk103331/mymcp/pkg/common"
 
 	"github.com/mark3labs/mcp-go/client"
 	"github.com/mark3labs/mcp-go/mcp"
@@ -22,10 +23,10 @@ type ProxyServer struct {
 	Error      string
 	ServerInfo mcp.Implementation
 	Client     client.MCPClient
-	Config     *data.ServerConfig
+	Config     *common.ServerConfig
 }
 
-func NewProxyServer(cfg *data.ServerConfig) (*ProxyServer, error) {
+func NewProxyServer(cfg *common.ServerConfig) (*ProxyServer, error) {
 	proxyServer := &ProxyServer{
 		ID:     cfg.ID,
 		Config: cfg,

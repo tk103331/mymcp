@@ -2,10 +2,11 @@ package manager
 
 import (
 	"log"
-	"mcphosting/manager/data"
-	"mcphosting/manager/proxy"
 	"net/http"
 	"sync"
+
+	"github.com/tk103331/mymcp/manager/data"
+	"github.com/tk103331/mymcp/pkg/proxy"
 
 	"github.com/gorilla/mux"
 )

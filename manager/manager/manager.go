@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"sync"
 
-	"mcphosting/manager/data"
-	"mcphosting/manager/proxy"
+	"github.com/tk103331/mymcp/manager/data"
+	"github.com/tk103331/mymcp/pkg/proxy"
 )
 
 var (

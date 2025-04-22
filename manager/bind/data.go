@@ -1,7 +1,7 @@
 package bind
 
 import (
-	"mcphosting/manager/data"
+	"github.com/tk103331/mymcp/manager/data"
 )
 
 type Data struct {
