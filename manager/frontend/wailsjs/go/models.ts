@@ -1,17 +1,5 @@
-export namespace data {
+export namespace common {
 	
-	export class ManagedClient {
-	    config: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new ManagedClient(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.config = source["config"];
-	    }
-	}
 	export class ServerConfig {
 	    id: string;
 	    workspace: string;
@@ -40,9 +28,26 @@ export namespace data {
 	        this.params = source["params"];
 	    }
 	}
+
+}
+
+export namespace data {
+	
+	export class ManagedClient {
+	    config: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ManagedClient(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.config = source["config"];
+	    }
+	}
 	export class ServerInstance {
 	    id: string;
-	    config?: ServerConfig;
+	    config?: common.ServerConfig;
 	    status: string;
 	    error: string;
 	    serverInfo?: mcp.Implementation;
@@ -55,7 +60,7 @@ export namespace data {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
-	        this.config = this.convertValues(source["config"], ServerConfig);
+	        this.config = this.convertValues(source["config"], common.ServerConfig);
 	        this.status = source["status"];
 	        this.error = source["error"];
 	        this.serverInfo = this.convertValues(source["serverInfo"], mcp.Implementation);

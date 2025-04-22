@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/tk103331/mymcp/manager/data"
+	"github.com/tk103331/mymcp/pkg/common"
 	"github.com/tk103331/mymcp/pkg/proxy"
 )
 
@@ -41,7 +42,7 @@ func StartWorkspace(workspaceID string) error {
 }
 
 // NewServerInstance 启动单个服务
-func NewServerInstance(cfg *data.ServerConfig) (*data.ServerInstance, error) {
+func NewServerInstance(cfg *common.ServerConfig) (*data.ServerInstance, error) {
 	proxyMutex.Lock()
 	defer proxyMutex.Unlock()
 

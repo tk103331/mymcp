@@ -2,6 +2,7 @@ package bind
 
 import (
 	"github.com/tk103331/mymcp/manager/data"
+	"github.com/tk103331/mymcp/pkg/common"
 )
 
 type Data struct {
@@ -23,12 +24,12 @@ func (d *Data) DeleteWorkspace(id string) error {
 }
 
 // SaveServerConfig 保存服务配置到文件
-func (d *Data) SaveServerConfig(config *data.ServerConfig) error {
+func (d *Data) SaveServerConfig(config *common.ServerConfig) error {
 	return data.SaveServerConfig(config)
 }
 
 // LoadServerConfigs 从文件加载服务配置
-func (d *Data) LoadServerConfigs() ([]*data.ServerConfig, error) {
+func (d *Data) LoadServerConfigs() ([]*common.ServerConfig, error) {
 	return data.LoadServerConfigs()
 }
 

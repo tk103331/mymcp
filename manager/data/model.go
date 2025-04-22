@@ -5,6 +5,7 @@ import (
 	"net/url"
 
 	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/tk103331/mymcp/pkg/common"
 )
 
 type Workspace struct {
@@ -22,12 +23,12 @@ type ManagedClient struct {
 }
 
 type ServerInstance struct {
-	ID         string              `json:"id"`
-	Config     *ServerConfig       `json:"config"`
-	Status     string              `json:"status"`
-	Error      string              `json:"error"`
-	ServerInfo *mcp.Implementation `json:"serverInfo"`
-	Endpoint   string              `json:"endpoint"`
+	ID         string               `json:"id"`
+	Config     *common.ServerConfig `json:"config"`
+	Status     string               `json:"status"`
+	Error      string               `json:"error"`
+	ServerInfo *mcp.Implementation  `json:"serverInfo"`
+	Endpoint   string               `json:"endpoint"`
 }
 
 type ServerConfig struct {

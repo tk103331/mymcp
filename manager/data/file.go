@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/google/uuid"
+	"github.com/tk103331/mymcp/pkg/common"
 )
 
 const (
@@ -75,7 +76,7 @@ func DeleteWorkspace(id string) error {
 }
 
 // SaveServerConfig 保存服务配置到文件
-func SaveServerConfig(config *ServerConfig) error {
+func SaveServerConfig(config *common.ServerConfig) error {
 	if config.ID == "" {
 		config.ID = uuid.New().String()
 	}
@@ -83,7 +84,7 @@ func SaveServerConfig(config *ServerConfig) error {
 	// 读取现有配置
 	configs, err := LoadServerConfigs()
 	if err != nil {
-		configs = make([]*ServerConfig, 0)
+		configs = make([]*common.ServerConfig, 0)
 	}
 
 	// 更新或添加配置
@@ -104,8 +105,8 @@ func SaveServerConfig(config *ServerConfig) error {
 }
 
 // LoadServerConfigs 从文件加载服务配置
-func LoadServerConfigs() ([]*ServerConfig, error) {
-	var configs []*ServerConfig
+func LoadServerConfigs() ([]*common.ServerConfig, error) {
+	var configs []*common.ServerConfig
 	err := loadFromFile(serverConfigFile, &configs)
 	if err != nil {
 		return nil, err
@@ -213,7 +214,7 @@ func GetWorkspace(id string) (*Workspace, error) {
 }
 
 // GetWorkspaceServerConfigs 获取工作空间关联的服务配置列表
-func GetWorkspaceServerConfigs(workspaceID string) ([]*ServerConfig, error) {
+func GetWorkspaceServerConfigs(workspaceID string) ([]*common.ServerConfig, error) {
 	// 先验证工作空间是否存在
 	_, err := GetWorkspace(workspaceID)
 	if err != nil {
@@ -227,7 +228,7 @@ func GetWorkspaceServerConfigs(workspaceID string) ([]*ServerConfig, error) {
 	}
 
 	// 过滤出属于该工作空间的服务配置
-	workspaceConfigs := make([]*ServerConfig, 0)
+	workspaceConfigs := make([]*common.ServerConfig, 0)
 	for _, config := range configs {
 		if config.Workspace == workspaceID {
 			workspaceConfigs = append(workspaceConfigs, config)
@@ -238,7 +239,7 @@ func GetWorkspaceServerConfigs(workspaceID string) ([]*ServerConfig, error) {
 }
 
 // GetServerConfig 通过ID获取服务配置信息
-func GetServerConfig(id string) (*ServerConfig, error) {
+func GetServerConfig(id string) (*common.ServerConfig, error) {
 	configs, err := LoadServerConfigs()
 	if err != nil {
 		return nil, err

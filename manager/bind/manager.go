@@ -3,6 +3,7 @@ package bind
 import (
 	"github.com/tk103331/mymcp/manager/data"
 	"github.com/tk103331/mymcp/manager/manager"
+	"github.com/tk103331/mymcp/pkg/common"
 )
 
 type Manager struct{}
@@ -13,7 +14,7 @@ func (m *Manager) StartWorkspace(workspaceID string) error {
 }
 
 // NewServerInstance 启动单个服务
-func (m *Manager) NewServerInstance(cfg *data.ServerConfig) (*data.ServerInstance, error) {
+func (m *Manager) NewServerInstance(cfg *common.ServerConfig) (*data.ServerInstance, error) {
 	return manager.NewServerInstance(cfg)
 }
 
