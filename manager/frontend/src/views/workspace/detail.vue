@@ -427,28 +427,29 @@ const supportClients = [
       }
     }
   },
-  {
-    name: 'joycoder',
-    label: 'JoyCoder',
-    logo: '/image/joycoder.png',
-    sse: true,
-    configFile: {
-      win: '',
-      mac: '~/.joycoder/joycoder-mcp.json',
-      linux: ''
-    },
-    configProperty: 'mcpServers',
-    configGenerator: (instances) => {
-      return {
-        mcpServers: instances.reduce((acc, instance) => {
-          acc[`${instance.config.name}`] = {
-            url: instance.endpoint
-          }
-          return acc
-        }, {})
-      }
-    }
-  },
+  
+  // {
+  //   name: 'joycoder',
+  //   label: 'JoyCoder',
+  //   logo: '/image/joycoder.png',
+  //   sse: true,
+  //   configFile: {
+  //     win: '',
+  //     mac: '~/.joycoder/joycoder-mcp.json',
+  //     linux: ''
+  //   },
+  //   configProperty: 'mcpServers',
+  //   configGenerator: (instances) => {
+  //     return {
+  //       mcpServers: instances.reduce((acc, instance) => {
+  //         acc[`${instance.config.name}`] = {
+  //           url: instance.endpoint
+  //         }
+  //         return acc
+  //       }, {})
+  //     }
+  //   }
+  // },
   {
     name: 'windsurf',
     label: 'Windsurf',
@@ -465,6 +466,27 @@ const supportClients = [
         mcpServers: instances.reduce((acc, instance) => {
           acc[`${instance.config.name}`] = {
             serverUrl: instance.endpoint
+          }
+          return acc
+        }, {})
+      }
+    }
+  },  {
+    name: 'trae',
+    label: 'Trae',
+    logo: '/image/trae.png',
+    sse: false,
+    configFile: {
+      win: '%APPDATA%\Claude\claude_desktop_config.json',
+      mac: '~/Library/Application Support/Trae/User/mcp.json',
+      linux: ''
+    },
+    configProperty: 'mcpServers',
+    configGenerator: (instances) => {
+      return {
+        mcpServers: instances.reduce((acc, instance) => {
+          acc[`${instance.config.name}`] = {
+            url: instance.endpoint
           }
           return acc
         }, {})
