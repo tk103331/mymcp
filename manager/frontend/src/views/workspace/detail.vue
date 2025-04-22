@@ -427,29 +427,6 @@ const supportClients = [
       }
     }
   },
-  
-  // {
-  //   name: 'joycoder',
-  //   label: 'JoyCoder',
-  //   logo: '/image/joycoder.png',
-  //   sse: true,
-  //   configFile: {
-  //     win: '',
-  //     mac: '~/.joycoder/joycoder-mcp.json',
-  //     linux: ''
-  //   },
-  //   configProperty: 'mcpServers',
-  //   configGenerator: (instances) => {
-  //     return {
-  //       mcpServers: instances.reduce((acc, instance) => {
-  //         acc[`${instance.config.name}`] = {
-  //           url: instance.endpoint
-  //         }
-  //         return acc
-  //       }, {})
-  //     }
-  //   }
-  // },
   {
     name: 'windsurf',
     label: 'Windsurf',
