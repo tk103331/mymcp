@@ -10,6 +10,7 @@ import (
 	"github.com/tk103331/mymcp/pkg/common"
 
 	"github.com/mark3labs/mcp-go/client"
+	"github.com/mark3labs/mcp-go/client/transport"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )
@@ -64,10 +65,19 @@ func (p *ProxyServer) initClient() error {
 		for k, v := range p.Config.Params {
 			url = strings.ReplaceAll(url, "${"+k+"}", v)
 		}
-		sseClient, err := client.NewSSEMCPClient(url)
+		headers := map[string]string{}
+		for name, value := range p.Config.Headers {
+			newValue := value
+			for k, v := range p.Config.Params {
+				newValue = strings.ReplaceAll(newValue, "${"+k+"}", v)
+			}
+			headers[name] = newValue
+		}
+		sseTransport, err := transport.NewSSE(url, transport.WithHeaders(headers))
 		if err != nil {
 			return err
 		}
+		sseClient := client.NewClient(sseTransport)
 		sseClient.Start(context.Background())
 		p.Client = sseClient
 	} else {

@@ -4,7 +4,7 @@
     "mcpServers": {
         "filesystem": {
           "transport": "stdio",
-          "cmd": "npx -y @modelcontextprotocol/server-filesystem /Users/tiankai1/",
+          "cmd": "npx -y @modelcontextprotocol/server-filesystem ~/",
           "env": []
         }
     }

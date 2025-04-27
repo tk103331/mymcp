@@ -8,6 +8,7 @@ type ServerConfig struct {
 	Transport string            `json:"transport"`
 	Cmd       string            `json:"cmd"` // for stdio
 	Env       []string          `json:"env"`
-	Url       string            `json:"url"`    // for sse
+	Url       string            `json:"url"` // for sse
+	Headers   map[string]string `json:"headers"`
 	Params    map[string]string `json:"params"` // for paramaterized cmd or url
 }
