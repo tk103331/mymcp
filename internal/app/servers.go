@@ -23,6 +23,11 @@ func (a *app) serversPage(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
 				if ui.PrimaryButton(c, msgs.GatewayAddServer()).Clicked() {
 					a.openAddServerDialog(c, msgs)
 				}
+				if a.gwDirty && a.gwRunning {
+					if ui.Button(c, msgs.GatewayRestart()).Clicked() {
+						a.restartGateway(msgs)
+					}
+				}
 				if ui.Button(c, msgs.GatewayRefresh()).Clicked() {
 					a.loadGateway()
 				}

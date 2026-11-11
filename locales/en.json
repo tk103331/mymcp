@@ -487,5 +487,6 @@
   "catalogTitle": "Catalog",
   "catalogSubtitle": "Add MCP servers from the bundled catalog.",
   "gatewayReady": "Ready",
-  "gatewayDisabled": "Disabled"
+  "gatewayDisabled": "Disabled",
+  "gatewayRestartNeeded": "Restart required"
 }

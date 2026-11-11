@@ -40,6 +40,9 @@ func (a *app) overviewPage(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
 			if a.gwError != "" {
 				ui.Text(c, a.gwError).FontSize(12).TextColor(t.Danger)
 			}
+			if a.gwDirty && a.gwRunning {
+				ui.Text(c, msgs.GatewayRestartHint()).FontSize(11.5).TextColor(t.Warning)
+			}
 
 			ui.Column(c).Padding(18).Gap(8).Radius(14).Background(t.Surface).Border(1, t.Border).Children(func() {
 				ui.Text(c, msgs.GatewayEndpoint()).FontSize(13).Bold()

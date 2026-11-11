@@ -256,7 +256,7 @@ func (a *app) gatewayServers(c *ui.Context, t *ui.Theme, msgs locales.Messages) 
 					}
 				})
 			}
-		})
+		}).Height(tableHeight(len(rows)))
 	})
 }
 
@@ -352,7 +352,7 @@ func (a *app) gatewayProfiles(c *ui.Context, t *ui.Theme, msgs locales.Messages)
 					}
 				})
 			}
-		})
+		}).Height(tableHeight(len(rows)))
 	})
 }
 
@@ -816,7 +816,7 @@ func (a *app) gatewayKeys(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
 					a.gwKeyRevoke = key
 				}
 			}
-		})
+		}).Height(tableHeight(len(rows)))
 	})
 }
 

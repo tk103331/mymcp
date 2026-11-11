@@ -17,6 +17,11 @@ func (a *app) profilesPage(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
 				if ui.PrimaryButton(c, msgs.GatewayNewProfile()).Clicked() {
 					a.openProfileDialog("")
 				}
+				if a.gwDirty && a.gwRunning {
+					if ui.Button(c, msgs.GatewayRestart()).Clicked() {
+						a.restartGateway(msgs)
+					}
+				}
 				if ui.Button(c, msgs.GatewayRefresh()).Clicked() {
 					a.loadGateway()
 				}

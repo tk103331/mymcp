@@ -104,7 +104,7 @@ go test ./...                    通过
 go test -race ./...              通过
 go vet ./...                     通过
 go tool mygo vet                 通过
-go tool mygo i18n check          通过（404 条中英文文案）
+go tool mygo i18n check          通过（405 条中英文文案）
 go tool mygo build               通过
 ```
 

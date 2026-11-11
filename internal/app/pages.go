@@ -883,6 +883,17 @@ func clientIcon(c *ui.Context, name string, size float32, color ui.Color) {
 	}
 }
 
+func tableHeight(rows int) float32 {
+	height := 42 + float32(rows)*40
+	if height < 160 {
+		return 160
+	}
+	if height > 460 {
+		return 460
+	}
+	return height
+}
+
 func (a *app) codeBox(c *ui.Context, t *ui.Theme, code string) {
 	ui.Box(c).Grow(1).MinWidth(0).Padding(8, 10).Radius(8).
 		Background(t.Background.Alpha(0.6)).Border(1, t.Border).Children(func() {

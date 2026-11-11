@@ -732,6 +732,8 @@ func (a *app) gatewayPill(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
 	switch {
 	case a.gwStarting:
 		text, color = msgs.NavGateway()+" · "+msgs.GatewayStarting(), t.Warning
+	case a.gwRunning && a.gwDirty:
+		text, color = msgs.NavGateway()+" · "+msgs.GatewayRestartNeeded(), t.Warning
 	case a.gwRunning:
 		text, color = msgs.NavGateway()+" · "+msgs.GatewayRunning(), t.Success
 	case a.gwError != "":

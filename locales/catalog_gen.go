@@ -4079,3 +4079,13 @@ func GatewayDisabled() string { return In(i18n.Locale()).GatewayDisabled() }
 func (msgs Messages) GatewayDisabled() string {
 	return Catalog.Format(msgs.locale, "gatewayDisabled", nil)
 }
+
+// GatewayRestartNeeded says "Restart required"
+// in the language the app shows.
+func GatewayRestartNeeded() string { return In(i18n.Locale()).GatewayRestartNeeded() }
+
+// GatewayRestartNeeded says "Restart required"
+// in the language of msgs.
+func (msgs Messages) GatewayRestartNeeded() string {
+	return Catalog.Format(msgs.locale, "gatewayRestartNeeded", nil)
+}

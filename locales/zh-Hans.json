@@ -403,5 +403,6 @@
   "catalogTitle": "服务目录",
   "catalogSubtitle": "从内置目录添加 MCP 服务器。",
   "gatewayReady": "就绪",
-  "gatewayDisabled": "已禁用"
+  "gatewayDisabled": "已禁用",
+  "gatewayRestartNeeded": "需要重启"
 }
