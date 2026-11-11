@@ -16,7 +16,7 @@ import (
 
 func newTestApp() *app {
 	return &app{
-		router:   ui.NewRouter("/workspaces"),
+		router:   ui.NewRouter("/overview"),
 		settings: data.Settings{Language: "en", Theme: "light", BaseURL: "http://localhost:8421", GatewayAddr: "127.0.0.1:8422"},
 		catalog:  loadCatalog(),
 		gwAddr:   "127.0.0.1:8422",
@@ -31,33 +31,42 @@ func TestCatalog(t *testing.T) {
 	if len(catalog.Categories()) == 0 {
 		t.Fatal("the catalog has no categories")
 	}
-	if catalog.Server("firecrawl") == nil {
+	firecrawl := catalog.Server("firecrawl")
+	if firecrawl == nil {
 		t.Fatal("firecrawl is missing")
+	}
+	entry, err := catalogStoreServer(firecrawl, "npm", map[string]string{"FIRECRAWL_API_KEY": "secret://firecrawl"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if entry.Command != "npx" || entry.Env["FIRECRAWL_API_KEY"] != "secret://firecrawl" {
+		t.Fatalf("catalog entry = %+v", entry)
 	}
 }
 
 func TestViewRenders(t *testing.T) {
 	a := newTestApp()
 	tt := ui.NewTester(a.view, 1000, 700)
-	if !tt.HasText("Workspaces") {
-		t.Fatalf("the workspaces page did not render: %q", tt.Texts())
+	if !tt.HasText("Overview") {
+		t.Fatalf("the overview page did not render: %q", tt.Texts())
 	}
-	if err := tt.Click("Discover"); err != nil {
+	if err := tt.Click("Catalog"); err != nil {
 		t.Fatal(err)
 	}
-	if !tt.HasText("Discover Services") {
-		t.Fatalf("the discover page did not render: %q", tt.Texts())
+	if !tt.HasText("Catalog") {
+		t.Fatalf("the catalog page did not render: %q", tt.Texts())
 	}
 	if err := tt.Click("Settings"); err != nil {
 		t.Fatal(err)
 	}
-	if !tt.HasText("Base URL") {
+	if !tt.HasText("Gateway address") {
 		t.Fatalf("the settings page did not render: %q", tt.Texts())
 	}
 }
 
 func TestCreateWorkspaceDialog(t *testing.T) {
 	a := newTestApp()
+	a.router.Push("/workspaces")
 	tt := ui.NewTester(a.view, 1000, 700)
 	if err := tt.Click("Create Workspace"); err != nil {
 		t.Fatal(err)
@@ -192,7 +201,7 @@ func TestChineseInterface(t *testing.T) {
 	tt := ui.NewTester(a.view, 1100, 720)
 	tt.SetLocale("zh-Hans")
 	tt.Frame()
-	for _, text := range []string{"工作空间", "网关", "客户端", "插件", "用量", "设置"} {
+	for _, text := range []string{"概览", "服务器", "服务目录", "配置组", "客户端", "调试", "密钥", "插件", "用量", "设置"} {
 		if !tt.HasText(text) {
 			t.Fatalf("missing Chinese text %q: %q", text, tt.Texts())
 		}

@@ -2,10 +2,8 @@ package app
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
-	"net/http"
 	"regexp"
 	"strings"
 
@@ -369,8 +367,8 @@ func (a *app) managedChips(c *ui.Context, t *ui.Theme, msgs locales.Messages, wo
 func (a *app) discoverPage(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
 	ui.Column(c).Fill().Padding(30, 28, 20, 28).Gap(18).Children(func() {
 		ui.Column(c).Gap(5).Children(func() {
-			ui.Text(c, msgs.DiscoverTitle()).FontSize(24).Bold()
-			ui.Text(c, msgs.DiscoverSubtitle()).FontSize(12.5).TextColor(t.TextMuted)
+			ui.Text(c, msgs.CatalogTitle()).FontSize(24).Bold()
+			ui.Text(c, msgs.CatalogSubtitle()).FontSize(12.5).TextColor(t.TextMuted)
 		})
 
 		results := a.catalog.Filter(a.query, a.filterCategory(msgs))
@@ -415,7 +413,7 @@ func (a *app) serverRow(c *ui.Context, t *ui.Theme, msgs locales.Messages, serve
 		ui.Row(c).Gap(6).Shrink(0).Children(func() {
 			if ui.Button(c, msgs.ViewDetails()).FontSize(11.5).Padding(4, 10).Clicked() {
 				a.detail = server.Name
-				a.router.Push("/discover/" + server.Name)
+				a.router.Push("/catalog/" + server.Name)
 			}
 			if ui.PrimaryButton(c, msgs.Install()).FontSize(11.5).Padding(4, 10).Clicked() {
 				a.openInstall(server.Name)
@@ -431,7 +429,7 @@ func (a *app) detailPage(c *ui.Context, t *ui.Theme, msgs locales.Messages, name
 		ui.Column(c).Fill().Center().Gap(10).Children(func() {
 			ui.Text(c, msgs.NoResults()).FontSize(15).TextColor(t.TextMuted)
 			if ui.Button(c, msgs.Back()).Clicked() {
-				a.router.Push("/discover")
+				a.router.Push("/catalog")
 			}
 		})
 		return
@@ -443,7 +441,7 @@ func (a *app) detailPage(c *ui.Context, t *ui.Theme, msgs locales.Messages, name
 			ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
 				if ui.Button(c, "").Label(msgs.Back()).Tooltip(msgs.Back()).Padding(5, 7).Radius(8).
 					Children(func() { ui.Icon(c, iconBack).Size(13, 13) }).Clicked() {
-					a.router.Push("/discover")
+					a.router.Push("/catalog")
 				}
 				ui.Text(c, msgs.Back()).FontSize(12.5).TextColor(t.TextMuted)
 			})
@@ -645,39 +643,6 @@ func (a *app) settingsPage(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
 						}).Description(msgs.GatewayAddressHint())
 					})
 				})
-			})
-
-			server := ui.Column(c).Padding(20).Gap(14).Radius(14).
-				Background(t.Surface).Border(1, t.Border)
-			server.Children(func() {
-				ui.Column(c).Gap(3).Children(func() {
-					ui.Text(c, msgs.Server()).FontSize(14).Bold()
-					ui.Text(c, msgs.ServerHint()).FontSize(11.5).TextColor(t.TextMuted)
-				})
-				ui.Column(c).Padding(14).Gap(10).Radius(10).
-					Background(t.Background.Alpha(0.45)).Children(func() {
-					ui.Form(c, func() {
-						ui.Field(c, msgs.BaseUrl(), func() {
-							ui.TextInput(c, &a.settings.BaseURL).Placeholder("http://localhost:8421").Width(360)
-						}).Description(msgs.BaseUrlHint())
-					})
-					preview := ""
-					if host := endpointHost(a.settings.BaseURL); host != "" {
-						preview = "http://" + host
-					}
-					if preview != "" {
-						ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
-							ui.Box(c).Size(6, 6).Radius(999).Background(t.Success)
-							ui.Text(c, preview).FontSize(11.5).TextColor(t.TextMuted)
-							ui.Spacer(c)
-							if ui.Button(c, "").Label(msgs.CopyEndpoint()).Tooltip(msgs.CopyEndpoint()).Padding(3, 6).
-								Radius(6).Children(func() { ui.Icon(c, iconCopy).Size(12, 12) }).Clicked() {
-								mygo.Clipboard.WriteText(a.settings.BaseURL)
-								c.Toast(msgs.EndpointCopied())
-							}
-						})
-					}
-				})
 				if a.settingsError != "" {
 					ui.Text(c, a.settingsError).FontSize(12).TextColor(t.Danger)
 				}
@@ -701,10 +666,6 @@ func (a *app) settingsPage(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
 func (a *app) saveSettings(c *ui.Context, msgs locales.Messages) {
 	language := a.languageTag(a.languageChoice, msgs)
 	theme := a.themeTag(a.themeChoice, msgs)
-	if !validBaseURL(a.settings.BaseURL) {
-		a.settingsError = msgs.SettingsBaseUrlInvalid()
-		return
-	}
 	gatewayAddr, err := normalizeGatewayAddr(a.settings.GatewayAddr)
 	if err != nil {
 		a.settingsError = msgs.GatewayAddressInvalid()
@@ -719,7 +680,6 @@ func (a *app) saveSettings(c *ui.Context, msgs locales.Messages) {
 		}
 	}
 	a.settingsError = ""
-	oldBaseURL := a.settings.BaseURL
 	oldGatewayAddr := a.gwAddr
 	a.settings.Language = language
 	a.settings.Theme = theme
@@ -745,13 +705,6 @@ func (a *app) saveSettings(c *ui.Context, msgs locales.Messages) {
 		}
 	}
 	c.Toast(msgs.SettingsSaved())
-	if a.settings.BaseURL != oldBaseURL {
-		go func() {
-			if err := manager.RestartHttpServer(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-				log.Println("restart http server:", err)
-			}
-		}()
-	}
 }
 
 func (a *app) initSettingsChoices(msgs locales.Messages) {
@@ -962,10 +915,6 @@ func plainText(markdown string) string {
 	text = strings.ReplaceAll(text, "**", "")
 	text = strings.ReplaceAll(text, "`", "")
 	return strings.Join(strings.Fields(text), " ")
-}
-
-func validBaseURL(raw string) bool {
-	return strings.HasPrefix(raw, "http://") || strings.HasPrefix(raw, "https://")
 }
 
 func modelServerConfig(workspaceID string, server *CatalogServer, kind string, params map[string]string) model.ServerConfig {

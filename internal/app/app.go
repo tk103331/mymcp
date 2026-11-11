@@ -14,8 +14,6 @@ import (
 	"strings"
 	"time"
 
-	"net/url"
-
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 	"github.com/tk103331/mymcp/internal/configsync"
@@ -58,18 +56,21 @@ type app struct {
 	usageSince   time.Duration
 	usageError   string
 
-	gwManager  *gateway.Manager
-	gwServer   *http.Server
-	gwRunning  bool
-	gwStarting bool
-	gwError    string
-	gwAddr     string
-	gwServers  []*store.Server
-	gwProfiles []*store.Profile
-	gwCounts   map[string]int
-	gwKeys     []*store.GatewayKey
-	gwStatus   map[string]gateway.Status
-	gwDirty    bool
+	gwManager        *gateway.Manager
+	gwServer         *http.Server
+	gwRunning        bool
+	gwStarting       bool
+	gwError          string
+	gwAddr           string
+	gwServers        []*store.Server
+	gwProfiles       []*store.Profile
+	gwCounts         map[string]int
+	gwKeys           []*store.GatewayKey
+	gwStatus         map[string]gateway.Status
+	gwServerProfiles map[string][]string
+	gwServerErrors   map[string]string
+	gwServerQuery    string
+	gwDirty          bool
 
 	gwAddOpen       bool
 	gwEditing       string
@@ -187,12 +188,12 @@ type app struct {
 	detail   string
 
 	// Install dialog.
-	installOpen  bool
-	installSlug  string
-	installWS    string
-	installType  string
-	installParms map[string]string
-	installError string
+	installOpen    bool
+	installSlug    string
+	installProfile string
+	installType    string
+	installParms   map[string]string
+	installError   string
 
 	// Settings choices, as the labels the select shows.
 	languageChoice string
@@ -212,7 +213,7 @@ func New() *app {
 	}
 	loadClientIcons()
 	a := &app{
-		router:        ui.NewRouter("/workspaces"),
+		router:        ui.NewRouter("/overview"),
 		settings:      *settings,
 		catalog:       loadCatalog(),
 		usageSince:    24 * time.Hour,
@@ -572,19 +573,25 @@ func (a *app) sidebar(c *ui.Context, t *ui.Theme, msgs locales.Messages, vibrant
 
 		section := a.section()
 		sb := ui.Sidebar(c, &section, func() {
-			item := ui.SidebarItem(c, "workspaces", iconGrid, msgs.NavWorkspaces())
-			if len(a.workspaces) > 0 {
+			ui.SidebarItem(c, "overview", iconHome, msgs.NavOverview())
+			item := ui.SidebarItem(c, "servers", iconServer, msgs.NavServers())
+			if len(a.gwServers) > 0 {
 				item.Children(func() {
-					ui.Textf(c, "%d", len(a.workspaces)).FontSize(10.5).TextColor(t.TextMuted)
+					ui.Textf(c, "%d", len(a.gwServers)).FontSize(10.5).TextColor(t.TextMuted)
 				})
 			}
-			item = ui.SidebarItem(c, "discover", iconSearch, msgs.NavDiscover())
+			item = ui.SidebarItem(c, "catalog", iconSearch, msgs.NavCatalog())
 			item.Children(func() {
 				ui.Textf(c, "%d", len(a.catalog.Servers())).FontSize(10.5).TextColor(t.TextMuted)
 			})
-			ui.SidebarItem(c, "gateway", iconServer, msgs.NavGateway())
-			ui.SidebarItem(c, "debug", iconDebug, msgs.NavDebug())
+			item = ui.SidebarItem(c, "profiles", iconLayers, msgs.NavProfiles())
+			if len(a.gwProfiles) > 0 {
+				item.Children(func() {
+					ui.Textf(c, "%d", len(a.gwProfiles)).FontSize(10.5).TextColor(t.TextMuted)
+				})
+			}
 			ui.SidebarItem(c, "clients", iconLink, msgs.NavClients())
+			ui.SidebarItem(c, "debug", iconDebug, msgs.NavDebug())
 			ui.SidebarItem(c, "secrets", iconKey, msgs.NavSecrets())
 			ui.SidebarItem(c, "plugins", iconPuzzle, msgs.NavPlugins())
 			ui.SidebarItem(c, "usage", iconChart, msgs.NavUsage())
@@ -595,11 +602,7 @@ func (a *app) sidebar(c *ui.Context, t *ui.Theme, msgs locales.Messages, vibrant
 		}
 		sb.Grow(1).Label(msgs.AppTitle())
 		if sb.Changed() {
-			if section == "workspaces" {
-				a.router.Push("/workspaces")
-			} else {
-				a.router.Push("/" + section)
-			}
+			a.router.Push("/" + section)
 		}
 
 		ui.Divider(c).MarginX(12)
@@ -654,7 +657,10 @@ func (a *app) content(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
 			if path == "/usage" {
 				a.loadUsage()
 			}
-			if path == "/gateway" {
+			if path == "/overview" || path == "/gateway" {
+				a.loadOverview()
+			}
+			if path == "/servers" || path == "/profiles" {
 				a.loadGateway()
 			}
 			if path == "/debug" {
@@ -672,21 +678,21 @@ func (a *app) content(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
 		}
 		a.router.View(c, func(r *ui.Route) {
 			switch {
-			case r.Match("/workspaces"):
-				r.Title(msgs.WorkspacesTitle())
-				a.workspacesPage(c, t, msgs)
-			case r.Match("/workspaces/{id}"):
-				r.Title(msgs.WorkspacesTitle())
-				a.workspaceDetail(c, t, msgs, r.Param("id"))
-			case r.Match("/discover"):
-				r.Title(msgs.DiscoverTitle())
+			case r.Match("/overview"), r.Match("/gateway"):
+				r.Title(msgs.OverviewTitle())
+				a.overviewPage(c, t, msgs)
+			case r.Match("/servers"):
+				r.Title(msgs.ServersTitle())
+				a.serversPage(c, t, msgs)
+			case r.Match("/profiles"):
+				r.Title(msgs.ProfilesTitle())
+				a.profilesPage(c, t, msgs)
+			case r.Match("/catalog"), r.Match("/discover"):
+				r.Title(msgs.CatalogTitle())
 				a.discoverPage(c, t, msgs)
-			case r.Match("/discover/{name}"):
-				r.Title(msgs.DiscoverTitle())
+			case r.Match("/catalog/{name}"), r.Match("/discover/{name}"):
+				r.Title(msgs.CatalogTitle())
 				a.detailPage(c, t, msgs, r.Param("name"))
-			case r.Match("/gateway"):
-				r.Title(msgs.GatewayTitle())
-				a.gatewayPage(c, t, msgs)
 			case r.Match("/debug"):
 				r.Title(msgs.DebugTitle())
 				a.debugPage(c, t, msgs)
@@ -705,6 +711,13 @@ func (a *app) content(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
 			case r.Match("/settings"):
 				r.Title(msgs.SettingsTitle())
 				a.settingsPage(c, t, msgs)
+			// Kept for compatibility with older deep links.
+			case r.Match("/workspaces"):
+				r.Title(msgs.WorkspacesTitle())
+				a.workspacesPage(c, t, msgs)
+			case r.Match("/workspaces/{id}"):
+				r.Title(msgs.WorkspacesTitle())
+				a.workspaceDetail(c, t, msgs, r.Param("id"))
 			default:
 				ui.Text(c, msgs.NoResults()).Padding(24)
 			}
@@ -760,14 +773,16 @@ func (a *app) runningPill(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
 func (a *app) section() string {
 	path := a.router.Path()
 	switch {
-	case strings.HasPrefix(path, "/discover"):
-		return "discover"
+	case strings.HasPrefix(path, "/servers"):
+		return "servers"
+	case strings.HasPrefix(path, "/profiles"):
+		return "profiles"
+	case strings.HasPrefix(path, "/catalog"), strings.HasPrefix(path, "/discover"):
+		return "catalog"
 	case strings.HasPrefix(path, "/settings"):
 		return "settings"
 	case strings.HasPrefix(path, "/usage"):
 		return "usage"
-	case strings.HasPrefix(path, "/gateway"):
-		return "gateway"
 	case strings.HasPrefix(path, "/debug"):
 		return "debug"
 	case strings.HasPrefix(path, "/clients"):
@@ -777,31 +792,30 @@ func (a *app) section() string {
 	case strings.HasPrefix(path, "/plugins"):
 		return "plugins"
 	default:
-		return "workspaces"
+		return "overview"
 	}
 }
 
 func (a *app) windowTitle(msgs locales.Messages) string {
 	path := a.router.Path()
 	switch {
-	case strings.HasPrefix(path, "/workspaces/"):
-		if a.current != nil {
-			return a.current.Name
-		}
-		return msgs.WorkspacesTitle()
-	case path == "/discover":
-		return msgs.DiscoverTitle()
-	case strings.HasPrefix(path, "/discover/"):
+	case path == "/overview", path == "/gateway":
+		return msgs.OverviewTitle()
+	case path == "/servers":
+		return msgs.ServersTitle()
+	case path == "/profiles":
+		return msgs.ProfilesTitle()
+	case path == "/catalog", path == "/discover":
+		return msgs.CatalogTitle()
+	case strings.HasPrefix(path, "/catalog/"), strings.HasPrefix(path, "/discover/"):
 		if server := a.catalog.Server(a.detail); server != nil {
 			return server.DisplayName
 		}
-		return msgs.DiscoverTitle()
+		return msgs.CatalogTitle()
 	case path == "/settings":
 		return msgs.SettingsTitle()
 	case path == "/usage":
 		return msgs.UsageTitle()
-	case path == "/gateway":
-		return msgs.GatewayTitle()
 	case path == "/debug":
 		return msgs.DebugTitle()
 	case path == "/clients":
@@ -810,8 +824,13 @@ func (a *app) windowTitle(msgs locales.Messages) string {
 		return msgs.SecretsTitle()
 	case path == "/plugins":
 		return msgs.PluginsTitle()
-	default:
+	case strings.HasPrefix(path, "/workspaces/"):
+		if a.current != nil {
+			return a.current.Name
+		}
 		return msgs.WorkspacesTitle()
+	default:
+		return msgs.OverviewTitle()
 	}
 }
 
@@ -930,15 +949,6 @@ func appVersion() string {
 		return "v" + version
 	}
 	return "dev"
-}
-
-// endpointHost is the host and port of the HTTP endpoint, for the sidebar.
-func endpointHost(raw string) string {
-	u, err := url.Parse(raw)
-	if err != nil || u.Host == "" {
-		return raw
-	}
-	return u.Host
 }
 
 func mymcpDir() string {

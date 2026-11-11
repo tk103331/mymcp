@@ -906,11 +906,11 @@ func (msgs Messages) SettingsTitle() string {
 	return Catalog.Format(msgs.locale, "settingsTitle", nil)
 }
 
-// SettingsSubtitle says "The gateway, workspace endpoint and the look of the app."
+// SettingsSubtitle says "Gateway and appearance."
 // in the language the app shows.
 func SettingsSubtitle() string { return In(i18n.Locale()).SettingsSubtitle() }
 
-// SettingsSubtitle says "The gateway, workspace endpoint and the look of the app."
+// SettingsSubtitle says "Gateway and appearance."
 // in the language of msgs.
 func (msgs Messages) SettingsSubtitle() string {
 	return Catalog.Format(msgs.locale, "settingsSubtitle", nil)
@@ -1986,11 +1986,11 @@ func (msgs Messages) GatewayNoServers() string {
 	return Catalog.Format(msgs.locale, "gatewayNoServers", nil)
 }
 
-// GatewayNoServersHint says "Add servers with the mymcp CLI or the workspace manager."
+// GatewayNoServersHint says "Add a server manually or from the catalog."
 // in the language the app shows.
 func GatewayNoServersHint() string { return In(i18n.Locale()).GatewayNoServersHint() }
 
-// GatewayNoServersHint says "Add servers with the mymcp CLI or the workspace manager."
+// GatewayNoServersHint says "Add a server manually or from the catalog."
 // in the language of msgs.
 func (msgs Messages) GatewayNoServersHint() string {
 	return Catalog.Format(msgs.locale, "gatewayNoServersHint", nil)
@@ -3868,4 +3868,214 @@ func DebugNoSelection() string { return In(i18n.Locale()).DebugNoSelection() }
 // in the language of msgs.
 func (msgs Messages) DebugNoSelection() string {
 	return Catalog.Format(msgs.locale, "debugNoSelection", nil)
+}
+
+// NavOverview says "Overview"
+// in the language the app shows.
+func NavOverview() string { return In(i18n.Locale()).NavOverview() }
+
+// NavOverview says "Overview"
+// in the language of msgs.
+func (msgs Messages) NavOverview() string {
+	return Catalog.Format(msgs.locale, "navOverview", nil)
+}
+
+// NavServers says "Servers"
+// in the language the app shows.
+func NavServers() string { return In(i18n.Locale()).NavServers() }
+
+// NavServers says "Servers"
+// in the language of msgs.
+func (msgs Messages) NavServers() string {
+	return Catalog.Format(msgs.locale, "navServers", nil)
+}
+
+// NavProfiles says "Profiles"
+// in the language the app shows.
+func NavProfiles() string { return In(i18n.Locale()).NavProfiles() }
+
+// NavProfiles says "Profiles"
+// in the language of msgs.
+func (msgs Messages) NavProfiles() string {
+	return Catalog.Format(msgs.locale, "navProfiles", nil)
+}
+
+// NavCatalog says "Catalog"
+// in the language the app shows.
+func NavCatalog() string { return In(i18n.Locale()).NavCatalog() }
+
+// NavCatalog says "Catalog"
+// in the language of msgs.
+func (msgs Messages) NavCatalog() string {
+	return Catalog.Format(msgs.locale, "navCatalog", nil)
+}
+
+// OverviewTitle says "Overview"
+// in the language the app shows.
+func OverviewTitle() string { return In(i18n.Locale()).OverviewTitle() }
+
+// OverviewTitle says "Overview"
+// in the language of msgs.
+func (msgs Messages) OverviewTitle() string {
+	return Catalog.Format(msgs.locale, "overviewTitle", nil)
+}
+
+// OverviewSubtitle says "Gateway status, activity and quick actions."
+// in the language the app shows.
+func OverviewSubtitle() string { return In(i18n.Locale()).OverviewSubtitle() }
+
+// OverviewSubtitle says "Gateway status, activity and quick actions."
+// in the language of msgs.
+func (msgs Messages) OverviewSubtitle() string {
+	return Catalog.Format(msgs.locale, "overviewSubtitle", nil)
+}
+
+// OverviewQuickActions says "Quick actions"
+// in the language the app shows.
+func OverviewQuickActions() string { return In(i18n.Locale()).OverviewQuickActions() }
+
+// OverviewQuickActions says "Quick actions"
+// in the language of msgs.
+func (msgs Messages) OverviewQuickActions() string {
+	return Catalog.Format(msgs.locale, "overviewQuickActions", nil)
+}
+
+// OverviewManagedClients says "Managed clients"
+// in the language the app shows.
+func OverviewManagedClients() string { return In(i18n.Locale()).OverviewManagedClients() }
+
+// OverviewManagedClients says "Managed clients"
+// in the language of msgs.
+func (msgs Messages) OverviewManagedClients() string {
+	return Catalog.Format(msgs.locale, "overviewManagedClients", nil)
+}
+
+// OverviewCalls24h says "Calls (24h)"
+// in the language the app shows.
+func OverviewCalls24h() string { return In(i18n.Locale()).OverviewCalls24h() }
+
+// OverviewCalls24h says "Calls (24h)"
+// in the language of msgs.
+func (msgs Messages) OverviewCalls24h() string {
+	return Catalog.Format(msgs.locale, "overviewCalls24h", nil)
+}
+
+// OverviewErrors24h says "Errors (24h)"
+// in the language the app shows.
+func OverviewErrors24h() string { return In(i18n.Locale()).OverviewErrors24h() }
+
+// OverviewErrors24h says "Errors (24h)"
+// in the language of msgs.
+func (msgs Messages) OverviewErrors24h() string {
+	return Catalog.Format(msgs.locale, "overviewErrors24h", nil)
+}
+
+// OverviewRecentCalls says "Recent calls"
+// in the language the app shows.
+func OverviewRecentCalls() string { return In(i18n.Locale()).OverviewRecentCalls() }
+
+// OverviewRecentCalls says "Recent calls"
+// in the language of msgs.
+func (msgs Messages) OverviewRecentCalls() string {
+	return Catalog.Format(msgs.locale, "overviewRecentCalls", nil)
+}
+
+// OverviewNoCalls says "No calls recorded yet."
+// in the language the app shows.
+func OverviewNoCalls() string { return In(i18n.Locale()).OverviewNoCalls() }
+
+// OverviewNoCalls says "No calls recorded yet."
+// in the language of msgs.
+func (msgs Messages) OverviewNoCalls() string {
+	return Catalog.Format(msgs.locale, "overviewNoCalls", nil)
+}
+
+// ServersTitle says "Servers"
+// in the language the app shows.
+func ServersTitle() string { return In(i18n.Locale()).ServersTitle() }
+
+// ServersTitle says "Servers"
+// in the language of msgs.
+func (msgs Messages) ServersTitle() string {
+	return Catalog.Format(msgs.locale, "serversTitle", nil)
+}
+
+// ServersSubtitle says "The upstream MCP servers behind your profiles."
+// in the language the app shows.
+func ServersSubtitle() string { return In(i18n.Locale()).ServersSubtitle() }
+
+// ServersSubtitle says "The upstream MCP servers behind your profiles."
+// in the language of msgs.
+func (msgs Messages) ServersSubtitle() string {
+	return Catalog.Format(msgs.locale, "serversSubtitle", nil)
+}
+
+// ServersSearch says "Search servers"
+// in the language the app shows.
+func ServersSearch() string { return In(i18n.Locale()).ServersSearch() }
+
+// ServersSearch says "Search servers"
+// in the language of msgs.
+func (msgs Messages) ServersSearch() string {
+	return Catalog.Format(msgs.locale, "serversSearch", nil)
+}
+
+// ProfilesTitle says "Profiles"
+// in the language the app shows.
+func ProfilesTitle() string { return In(i18n.Locale()).ProfilesTitle() }
+
+// ProfilesTitle says "Profiles"
+// in the language of msgs.
+func (msgs Messages) ProfilesTitle() string {
+	return Catalog.Format(msgs.locale, "profilesTitle", nil)
+}
+
+// ProfilesSubtitle says "Separate tool collections with one endpoint each."
+// in the language the app shows.
+func ProfilesSubtitle() string { return In(i18n.Locale()).ProfilesSubtitle() }
+
+// ProfilesSubtitle says "Separate tool collections with one endpoint each."
+// in the language of msgs.
+func (msgs Messages) ProfilesSubtitle() string {
+	return Catalog.Format(msgs.locale, "profilesSubtitle", nil)
+}
+
+// CatalogTitle says "Catalog"
+// in the language the app shows.
+func CatalogTitle() string { return In(i18n.Locale()).CatalogTitle() }
+
+// CatalogTitle says "Catalog"
+// in the language of msgs.
+func (msgs Messages) CatalogTitle() string {
+	return Catalog.Format(msgs.locale, "catalogTitle", nil)
+}
+
+// CatalogSubtitle says "Add MCP servers from the bundled catalog."
+// in the language the app shows.
+func CatalogSubtitle() string { return In(i18n.Locale()).CatalogSubtitle() }
+
+// CatalogSubtitle says "Add MCP servers from the bundled catalog."
+// in the language of msgs.
+func (msgs Messages) CatalogSubtitle() string {
+	return Catalog.Format(msgs.locale, "catalogSubtitle", nil)
+}
+
+// GatewayReady says "Ready"
+// in the language the app shows.
+func GatewayReady() string { return In(i18n.Locale()).GatewayReady() }
+
+// GatewayReady says "Ready"
+// in the language of msgs.
+func (msgs Messages) GatewayReady() string {
+	return Catalog.Format(msgs.locale, "gatewayReady", nil)
+}
+
+// GatewayDisabled says "Disabled"
+// in the language the app shows.
+func GatewayDisabled() string { return In(i18n.Locale()).GatewayDisabled() }
+
+// GatewayDisabled says "Disabled"
+// in the language of msgs.
+func (msgs Messages) GatewayDisabled() string {
+	return Catalog.Format(msgs.locale, "gatewayDisabled", nil)
 }

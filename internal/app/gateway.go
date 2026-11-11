@@ -25,6 +25,7 @@ import (
 func (a *app) loadGateway() {
 	if a.usage == nil {
 		a.gwServers, a.gwProfiles, a.gwCounts, a.gwStatus = nil, nil, nil, nil
+		a.gwServerProfiles, a.gwServerErrors = nil, nil
 		return
 	}
 	ctx := context.Background()
@@ -39,10 +40,14 @@ func (a *app) loadGateway() {
 		return
 	}
 	counts := map[string]int{}
+	serverProfiles := map[string][]string{}
 	for _, profile := range profiles {
 		list, err := a.usage.AllServersForProfile(ctx, profile.Name)
 		if err == nil {
 			counts[profile.Name] = len(list)
+			for _, server := range list {
+				serverProfiles[server.Name] = append(serverProfiles[server.Name], profile.Name)
+			}
 		}
 	}
 	keys, err := a.usage.ListKeys(ctx)
@@ -51,8 +56,15 @@ func (a *app) loadGateway() {
 		return
 	}
 	a.gwServers, a.gwProfiles, a.gwCounts, a.gwKeys = servers, profiles, counts, keys
+	a.gwServerProfiles = serverProfiles
+	a.gwServerErrors = map[string]string{}
 	if a.gwRunning && a.gwManager != nil {
 		a.gwStatus = a.gwManager.Statuses()
+		for _, status := range a.gwStatus {
+			for name, why := range status.Errors {
+				a.gwServerErrors[name] = why
+			}
+		}
 	} else {
 		a.gwStatus = nil
 	}
@@ -155,67 +167,6 @@ func (a *app) restartGateway(msgs locales.Messages) {
 	a.startGateway(msgs)
 }
 
-func (a *app) gatewayPage(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
-	ui.Scroll(c).Grow(1).Padding(30, 28, 26, 28).Children(func() {
-		ui.Column(c).Gap(18).Children(func() {
-			ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
-				ui.Column(c).Gap(4).Children(func() {
-					ui.Text(c, msgs.GatewayTitle()).FontSize(24).Bold()
-					ui.Text(c, msgs.GatewaySubtitle()).FontSize(12.5).TextColor(t.TextMuted)
-				})
-				ui.Spacer(c)
-				a.gatewayStatus(c, t, msgs)
-				if ui.Button(c, msgs.GatewayAddServer()).Clicked() {
-					a.openAddServerDialog(c, msgs)
-				}
-				if ui.Button(c, msgs.GatewayImport()).Clicked() {
-					a.gwImportOpen, a.gwImportStats, a.gwImportError = true, nil, ""
-				}
-				if a.gwRunning || a.gwStarting {
-					if ui.Button(c, msgs.GatewayRestart()).Disabled(a.gwStarting).Clicked() {
-						a.restartGateway(msgs)
-					}
-					if ui.Button(c, msgs.GatewayStop()).Disabled(a.gwStarting).Clicked() {
-						a.stopGateway()
-					}
-				} else if ui.PrimaryButton(c, msgs.GatewayStart()).Clicked() {
-					a.startGateway(msgs)
-				}
-				if ui.Button(c, msgs.GatewayRefresh()).Clicked() {
-					a.loadGateway()
-				}
-			})
-
-			if a.gwError != "" {
-				ui.Text(c, a.gwError).FontSize(12).TextColor(t.Danger)
-			}
-			if a.gwDirty && a.gwRunning {
-				ui.Text(c, msgs.GatewayRestartHint()).FontSize(11.5).TextColor(t.Warning)
-			}
-
-			card := ui.Column(c).Padding(18).Gap(10).Radius(14).Background(t.Surface).Border(1, t.Border)
-			card.Children(func() {
-				ui.Text(c, msgs.GatewayEndpoint()).FontSize(14).Bold()
-				endpoint := "http://" + a.gwAddr + "/mcp/<profile>"
-				ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
-					ui.Text(c, endpoint).FontSize(12).TextColor(t.TextMuted).Grow(1).SingleLine()
-					if ui.Button(c, "").Label(msgs.Copy()).Tooltip(msgs.Copy()).Padding(3, 6).
-						Children(func() { ui.Icon(c, iconCopy).Size(12, 12) }).Clicked() {
-						mygo.Clipboard.WriteText(endpoint)
-						c.Toast(msgs.Copied())
-					}
-				})
-				ui.Text(c, msgs.GatewayHint()).FontSize(11.5).TextColor(t.TextMuted)
-			})
-
-			a.gatewayServers(c, t, msgs)
-			a.gatewayHealth(c, t, msgs)
-			a.gatewayProfiles(c, t, msgs)
-			a.gatewayKeys(c, t, msgs)
-		})
-	})
-}
-
 func (a *app) gatewayStatus(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
 	text, color := msgs.GatewayStopped(), t.TextMuted
 	if a.gwRunning {
@@ -233,39 +184,67 @@ func (a *app) gatewayStatus(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
 func (a *app) gatewayServers(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
 	card := ui.Column(c).Padding(18).Gap(10).Radius(14).Background(t.Surface).Border(1, t.Border)
 	card.Children(func() {
-		ui.Text(c, msgs.GatewayServers()).FontSize(14).Bold()
-		if len(a.gwServers) == 0 {
+		query := strings.ToLower(strings.TrimSpace(a.gwServerQuery))
+		rows := make([]*store.Server, 0, len(a.gwServers))
+		for _, server := range a.gwServers {
+			if query == "" ||
+				strings.Contains(strings.ToLower(server.Name), query) ||
+				strings.Contains(strings.ToLower(server.Transport), query) ||
+				strings.Contains(strings.ToLower(server.URL), query) ||
+				strings.Contains(strings.ToLower(server.Command), query) {
+				rows = append(rows, server)
+			}
+		}
+		if len(rows) == 0 {
 			ui.Text(c, msgs.GatewayNoServers()).FontSize(12).TextColor(t.TextMuted)
 			ui.Text(c, msgs.GatewayNoServersHint()).FontSize(11.5).TextColor(t.TextMuted)
 			return
 		}
-		rows := a.gwServers
 		columns := []ui.TableColumn{
 			{Title: msgs.ServiceName()},
-			{Title: msgs.GatewayTransport(), Width: 100},
-			{Title: msgs.GatewayEnabled(), Width: 80},
-			{Title: msgs.GatewayEndpoint(), Width: 280},
-			{Title: msgs.ServiceActions(), Width: 100, Fixed: true},
+			{Title: msgs.GatewayTransport(), Width: 80},
+			{Title: msgs.GatewayProfiles(), Width: 150},
+			{Title: msgs.GatewayEnabled(), Width: 65},
+			{Title: msgs.ServiceStatus(), Width: 100},
+			{Title: msgs.ServiceActions(), Width: 80, Fixed: true},
 		}
 		ui.Table(c, nil, columns, len(rows), func(row, col int) {
 			server := rows[row]
 			switch col {
 			case 0:
-				ui.Text(c, server.Name).FontSize(12).Bold().SingleLine()
+				ui.Column(c).Gap(1).Children(func() {
+					ui.Text(c, server.Name).FontSize(12).Bold().SingleLine()
+					ui.Text(c, serverTarget(server)).FontSize(10.5).TextColor(t.TextMuted).SingleLine()
+				})
 			case 1:
 				ui.Text(c, server.Transport).FontSize(11.5).TextColor(t.TextMuted)
 			case 2:
+				profiles := a.gwServerProfiles[server.Name]
+				value := "—"
+				if len(profiles) > 0 {
+					value = strings.Join(profiles, ", ")
+				}
+				ui.Text(c, value).FontSize(11).TextColor(t.TextMuted).SingleLine()
+			case 3:
 				enabled := server.Enabled
 				if ui.Switch(c, &enabled).Label(server.Name).Changed() {
 					a.setServerEnabled(server, enabled, c, msgs)
 				}
-			case 3:
-				value := server.URL
-				if server.Transport == "stdio" {
-					value = server.Command
-				}
-				ui.Text(c, value).FontSize(11.5).TextColor(t.TextMuted).SingleLine()
 			case 4:
+				text, color := msgs.GatewayStopped(), t.TextMuted
+				switch {
+				case a.gwServerErrors[server.Name] != "":
+					text, color = msgs.StatusError(), t.Danger
+				case !server.Enabled:
+					text, color = msgs.GatewayDisabled(), t.TextMuted
+				case a.gwRunning:
+					text, color = msgs.GatewayReady(), t.Success
+				}
+				badge := ui.Text(c, text).FontSize(11).TextColor(color)
+				if a.gwServerErrors[server.Name] != "" {
+					badge.Tooltip(a.gwServerErrors[server.Name])
+				}
+			case 5:
 				ui.Row(c).Gap(4).Children(func() {
 					if ui.Button(c, "").Label(msgs.Edit()).Tooltip(msgs.Edit()).
 						Padding(4, 7).Children(func() { ui.Icon(c, iconEdit).Size(12, 12) }).Clicked() {
@@ -279,6 +258,17 @@ func (a *app) gatewayServers(c *ui.Context, t *ui.Theme, msgs locales.Messages) 
 			}
 		})
 	})
+}
+
+func serverTarget(server *store.Server) string {
+	if server.Transport == "stdio" {
+		target := strings.TrimSpace(server.Command + " " + strings.Join(server.Args, " "))
+		if server.Executor == "docker" && server.Image != "" {
+			target = "docker " + server.Image
+		}
+		return target
+	}
+	return server.URL
 }
 
 // gatewayHealth shows each running profile's server and tool counts and
@@ -324,13 +314,6 @@ func sortedKeys(values map[string]string) []string {
 func (a *app) gatewayProfiles(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
 	card := ui.Column(c).Padding(18).Gap(10).Radius(14).Background(t.Surface).Border(1, t.Border)
 	card.Children(func() {
-		ui.Row(c).AlignItems(ui.Center).Children(func() {
-			ui.Text(c, msgs.GatewayProfiles()).FontSize(14).Bold()
-			ui.Spacer(c)
-			if ui.Button(c, msgs.GatewayNewProfile()).Clicked() {
-				a.openProfileDialog("")
-			}
-		})
 		if len(a.gwProfiles) == 0 {
 			ui.Text(c, msgs.GatewayNoProfiles()).FontSize(12).TextColor(t.TextMuted)
 			return
@@ -338,23 +321,36 @@ func (a *app) gatewayProfiles(c *ui.Context, t *ui.Theme, msgs locales.Messages)
 		rows := a.gwProfiles
 		columns := []ui.TableColumn{
 			{Title: msgs.GatewayProfileName()},
-			{Title: msgs.Description()},
-			{Title: msgs.GatewayServerCount(), Width: 100, Align: ui.End},
+			{Title: msgs.GatewayEndpoint(), Width: 250},
+			{Title: msgs.GatewayServerCount(), Width: 80, Align: ui.End},
 			{Title: msgs.ServiceActions(), Width: 90, Fixed: true},
 		}
 		ui.Table(c, nil, columns, len(rows), func(row, col int) {
 			profile := rows[row]
 			switch col {
 			case 0:
-				ui.Text(c, profile.Name).FontSize(12).Bold()
+				ui.Column(c).Gap(1).Children(func() {
+					ui.Text(c, profile.Name).FontSize(12).Bold()
+					if profile.Description != "" {
+						ui.Text(c, profile.Description).FontSize(10.5).TextColor(t.TextMuted).SingleLine()
+					}
+				})
 			case 1:
-				ui.Text(c, profile.Description).FontSize(11.5).TextColor(t.TextMuted).SingleLine()
+				ui.Text(c, "http://"+a.gwAddr+"/mcp/"+profile.Name).FontSize(10.5).TextColor(t.TextMuted).SingleLine()
 			case 2:
 				ui.Textf(c, "%d", a.gwCounts[profile.Name]).FontSize(12)
 			case 3:
-				if ui.Button(c, msgs.Edit()).FontSize(11).Padding(3, 8).Clicked() {
-					a.openProfileDialog(profile.Name)
-				}
+				ui.Row(c).Gap(4).Children(func() {
+					if ui.Button(c, "").Label(msgs.Edit()).Tooltip(msgs.Edit()).Padding(4, 7).
+						Children(func() { ui.Icon(c, iconEdit).Size(12, 12) }).Clicked() {
+						a.openProfileDialog(profile.Name)
+					}
+					if ui.Button(c, "").Label(msgs.Copy()).Tooltip(msgs.Copy()).Padding(4, 7).
+						Children(func() { ui.Icon(c, iconCopy).Size(12, 12) }).Clicked() {
+						mygo.Clipboard.WriteText("http://" + a.gwAddr + "/mcp/" + profile.Name)
+						c.Toast(msgs.Copied())
+					}
+				})
 			}
 		})
 	})

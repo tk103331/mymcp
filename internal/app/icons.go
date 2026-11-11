@@ -31,6 +31,8 @@ var (
 	iconEdit     = svg(`<path d="M10.2 2.6l3.2 3.2-7.8 7.8-4 0.8 0.8-4z"/><path d="M8.8 4l3.2 3.2"/>`)
 	iconPuzzle   = svg(`<path d="M6.2 2.2h3.6v1.6a1.6 1.6 0 1 0 3.2 0V2.2h1.6v3.6h-1.6a1.6 1.6 0 1 0 0 3.2h1.6v3.6h-3.6v-1.6a1.6 1.6 0 1 0-3.2 0v1.6H2.2V9h1.6a1.6 1.6 0 1 0 0-3.2H2.2V2.2h4z"/>`)
 	iconDebug    = svg(`<path d="M3.2 4.2l4 3.8-4 3.8"/><path d="M8.8 12.2h4.2"/>`)
+	iconHome     = svg(`<path d="M2.2 7.4L8 2.2l5.8 5.2v6.3a1.4 1.4 0 0 1-1.4 1.4H3.6a1.4 1.4 0 0 1-1.4-1.4z"/><path d="M6 13.6V9.2h4v4.4"/>`)
+	iconLayers   = svg(`<path d="M8 2.2l6 3.2-6 3.2-6-3.2z"/><path d="M2 8.1l6 3.2 6-3.2M2 11.6l6 3.2 6-3.2"/>`)
 	iconKey      = svg(`<rect x="3" y="7" width="10" height="7" rx="1.6"/><path d="M5.2 7V5.2a2.8 2.8 0 0 1 5.6 0V7"/>`)
 )
 

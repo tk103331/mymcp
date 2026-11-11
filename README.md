@@ -43,8 +43,9 @@ The repository includes:
   copying secret values.
 - **JavaScript adapters** — add a new client with `render`, `load` and `detect`
   hooks running in [moejs](https://github.com/Calcium-Ion/moejs).
-- **Native UI** — Chinese and English, light and dark themes, with Gateway,
-  Debug, Clients, Secrets, Plugins, Usage and Settings pages.
+- **Native UI** — Chinese and English, light and dark themes, with Overview,
+  Servers, Profiles, Catalog, Clients, Debug, Secrets, Plugins, Usage and
+  Settings pages.
 
 ## Direction
 
@@ -73,10 +74,10 @@ Prebuilt desktop apps and CLI archives are published on the
 ├── internal/
 │   ├── app/                # Native UI: pages, dialogs, client config, catalog
 │   ├── configsync/         # Client adapters, plan/apply/detach, imports
-│   ├── data/               # Workspace data and JSON settings
+│   ├── data/               # Local data and JSON settings
 │   ├── gateway/            # MCP aggregation, auth, usage endpoints
 │   ├── importer/           # Import servers from existing agents
-│   ├── manager/            # Server instances and the shared HTTP server
+│   ├── manager/            # Legacy workspace runtime
 │   ├── model/              # Server configuration shared by every tool
 │   ├── oauth/              # OAuth discovery, login and token refresh
 │   ├── plugin/             # JavaScript adapters on the moejs runtime
@@ -134,14 +135,17 @@ Profile bundles carry `secret://` references, not values; exporting refuses
 literal token/password/authorization fields until they are stored as secrets.
 
 Restart `mymcp serve` after changing servers or profiles; the desktop app has a
-Restart button on the Gateway page.
+Restart button on the Overview page.
 
 The desktop app has:
 
-- **Gateway** — starts with the app; start/stop/restart the endpoint, add,
-  edit, enable/disable and delete servers, create profiles and attach servers
-  to them, create and revoke client keys, and see upstream startup errors and
-  tool counts.
+- **Overview** — gateway health, endpoint, server/tool/client counts, recent
+  calls and quick actions.
+- **Servers** — add, import, edit, enable/disable and delete upstream servers;
+  see their profiles and startup errors.
+- **Profiles** — create profiles, attach servers, copy profile endpoints, and
+  manage client keys.
+- **Catalog** — add a server from the bundled catalog into a profile.
 - **Debug** — inspect aggregated tools, edit JSON arguments, call them through
   the running gateway, and see the response and latency.
 - **Clients** — detect installed clients, preview and apply the router entry,
@@ -151,8 +155,7 @@ The desktop app has:
 - **Plugins** — install, reload and remove JavaScript client adapters.
 - **Usage** — calls, errors, latency and recent activity from the same SQLite
   data.
-- **Settings** — language, theme, launch at login, the workspace endpoint and
-  the gateway address.
+- **Settings** — language, theme, launch at login and the gateway address.
 
 The daemon also exposes `/dashboard` for local usage, `/api/usage/*` as JSON
 and `/metrics` for Prometheus. `--tool-search` replaces large tool lists with

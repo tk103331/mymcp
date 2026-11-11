@@ -1,6 +1,8 @@
 package app
 
 import (
+	"context"
+	"fmt"
 	"log"
 	"strings"
 
@@ -8,6 +10,7 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/tk103331/mymcp/internal/data"
 	"github.com/tk103331/mymcp/internal/manager"
+	"github.com/tk103331/mymcp/internal/store"
 	"github.com/tk103331/mymcp/locales"
 )
 
@@ -494,9 +497,21 @@ func (a *app) openInstall(slug string) {
 	a.installType = ""
 	a.installParms = map[string]string{}
 	a.installError = ""
-	a.installWS = ""
-	if len(a.workspaces) > 0 {
-		a.installWS = a.workspaces[0].Name
+	a.installProfile = ""
+	if a.usage != nil {
+		_, _ = a.usage.EnsureDefaultProfile(context.Background())
+		if profiles, err := a.usage.ListProfiles(context.Background()); err == nil {
+			a.gwProfiles = profiles
+		}
+	}
+	for _, profile := range a.gwProfiles {
+		if a.installProfile == "" {
+			a.installProfile = profile.Name
+		}
+		if profile.Name == "default" {
+			a.installProfile = "default"
+			break
+		}
 	}
 	types := server.InstallTypes()
 	if len(types) > 0 {
@@ -521,12 +536,12 @@ func (a *app) installDialog(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
 			})
 
 			ui.Form(c, func() {
-				ui.Field(c, msgs.SelectWorkspace(), func() {
-					names := make([]string, len(a.workspaces))
-					for i, workspace := range a.workspaces {
-						names[i] = workspace.Name
+				ui.Field(c, msgs.GatewayProfile(), func() {
+					names := make([]string, len(a.gwProfiles))
+					for i, profile := range a.gwProfiles {
+						names[i] = profile.Name
 					}
-					ui.Select(c, &a.installWS, names)
+					ui.Select(c, &a.installProfile, names)
 				})
 				ui.Field(c, msgs.InstallType(), func() {
 					types := server.InstallTypes()
@@ -541,8 +556,8 @@ func (a *app) installDialog(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
 				a.commandPreview(c, t, server.InstallCommand(a.installType), msgs)
 			}
 			a.paramFields(c, server, &a.installParms)
-			if len(a.workspaces) == 0 {
-				ui.Text(c, msgs.WorkspaceRequired()).FontSize(12).TextColor(t.Warning)
+			if len(a.gwProfiles) == 0 {
+				ui.Text(c, msgs.GatewayNoProfiles()).FontSize(12).TextColor(t.Warning)
 			}
 			if a.installError != "" {
 				ui.Text(c, a.installError).FontSize(12).TextColor(t.Danger)
@@ -552,7 +567,7 @@ func (a *app) installDialog(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
 				if ui.Button(c, msgs.Cancel()).Clicked() {
 					a.installOpen = false
 				}
-				if ui.PrimaryButton(c, msgs.InstallConfirm()).Disabled(len(a.workspaces) == 0 || a.installType == "").Clicked() {
+				if ui.PrimaryButton(c, msgs.InstallConfirm()).Disabled(len(a.gwProfiles) == 0 || a.installType == "").Clicked() {
 					a.confirmInstall(c, server, msgs)
 				}
 			})
@@ -560,35 +575,75 @@ func (a *app) installDialog(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
 	})
 }
 
+func catalogValue(value string, params map[string]string) string {
+	for key, param := range params {
+		value = strings.ReplaceAll(value, "${"+key+"}", param)
+	}
+	return value
+}
+
+func catalogStoreServer(server *CatalogServer, kind string, params map[string]string) (*store.Server, error) {
+	installation, ok := server.Installations[kind]
+	if !ok || strings.TrimSpace(installation.Command) == "" {
+		return nil, fmt.Errorf("%s has no %s installation", server.DisplayName, kind)
+	}
+	args := make([]string, len(installation.Args))
+	for i, value := range installation.Args {
+		args[i] = catalogValue(value, params)
+	}
+	var env map[string]string
+	if len(installation.Env) > 0 {
+		env = map[string]string{}
+		for key, value := range installation.Env {
+			env[key] = catalogValue(value, params)
+		}
+	}
+	return &store.Server{
+		Name: server.Name, Transport: "stdio",
+		Command: catalogValue(installation.Command, params), Args: args, Env: env,
+		Enabled: true, IdleSeconds: 600,
+	}, nil
+}
+
 func (a *app) confirmInstall(c *ui.Context, server *CatalogServer, msgs locales.Messages) {
-	var workspace *data.Workspace
-	for _, candidate := range a.workspaces {
-		if candidate.Name == a.installWS {
-			workspace = candidate
+	if a.usage == nil {
+		a.installError = msgs.GatewayDatabaseUnavailable()
+		return
+	}
+	profile := ""
+	for _, candidate := range a.gwProfiles {
+		if candidate.Name == a.installProfile {
+			profile = candidate.Name
 			break
 		}
 	}
-	if workspace == nil {
-		a.installError = msgs.WorkspaceRequired()
+	if profile == "" {
+		a.installError = msgs.GatewayNoProfiles()
 		return
 	}
 	if key := requiredArgument(server, a.installParms); key != "" {
 		a.installError = key + ": " + msgs.GatewayRequired()
 		return
 	}
-	if workspaceHasServer(workspace.ID, server.Name) {
+	if _, err := a.usage.GetServer(context.Background(), server.Name); err == nil {
 		a.installError = msgs.InstallAlready(server.DisplayName)
 		return
 	}
-	if err := a.addServerConfig(workspace.ID, server.Name, a.installType, a.installParms); err != nil {
-		if workspaceHasServer(workspace.ID, server.Name) {
-			a.installOpen = false
-			c.Toast(msgs.InstallFailed(err.Error()))
-			return
-		}
+	entry, err := catalogStoreServer(server, a.installType, a.installParms)
+	if err != nil {
 		a.installError = msgs.InstallFailed(err.Error())
 		return
 	}
+	if _, err := a.usage.UpsertServer(context.Background(), entry); err != nil {
+		a.installError = msgs.InstallFailed(err.Error())
+		return
+	}
+	if err := a.usage.AttachServer(context.Background(), profile, entry.Name, true); err != nil {
+		a.installError = msgs.InstallFailed(err.Error())
+		return
+	}
+	a.gwDirty = true
+	a.loadGateway()
 	a.installOpen = false
 	c.Toast(msgs.InstallSuccess())
 }

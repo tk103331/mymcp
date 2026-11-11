@@ -52,9 +52,10 @@ type CatalogTool struct {
 }
 
 type CatalogInstallation struct {
-	Type    string   `json:"type"`
-	Command string   `json:"command"`
-	Args    []string `json:"args"`
+	Type    string            `json:"type"`
+	Command string            `json:"command"`
+	Args    []string          `json:"args"`
+	Env     map[string]string `json:"env,omitempty"`
 }
 
 type CatalogArgument struct {
