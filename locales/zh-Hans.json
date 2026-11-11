@@ -413,5 +413,7 @@
   "gatewayImportExisting": "已注册",
   "gatewayImportInvalid": "无效",
   "gatewayImportNoSelection": "请至少选择一个服务器。",
-  "gatewayImportRescan": "重新扫描"
+  "gatewayImportRescan": "重新扫描",
+  "gatewayImportAgent": "Agent",
+  "gatewayImportAllAgents": "所有 Agent"
 }

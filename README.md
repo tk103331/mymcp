@@ -167,8 +167,8 @@ with `--require-key`.
 
 The client importer reads JSON, JSONC, TOML and YAML configurations, skips
 duplicates and ignores MyMCP's own router entries and `mcp-pipe` bridges. In
-the app, choose the detected servers to import and the destination profile;
-the CLI accepts `--only name1,name2`.
+the app, filter detected servers by agent, choose the ones to import and the
+destination profile; the CLI accepts `--client ID` and `--only name1,name2`.
 
 Claude Desktop, Codex, Kiro and Zed use the `mcp-pipe` bridge. Desktop builds
 bundle `mcp-pipe`; the app copies it to `~/.mymcp/bin/mcp-pipe` and writes that

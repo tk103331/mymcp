@@ -4181,3 +4181,23 @@ func GatewayImportRescan() string { return In(i18n.Locale()).GatewayImportRescan
 func (msgs Messages) GatewayImportRescan() string {
 	return Catalog.Format(msgs.locale, "gatewayImportRescan", nil)
 }
+
+// GatewayImportAgent says "Agent"
+// in the language the app shows.
+func GatewayImportAgent() string { return In(i18n.Locale()).GatewayImportAgent() }
+
+// GatewayImportAgent says "Agent"
+// in the language of msgs.
+func (msgs Messages) GatewayImportAgent() string {
+	return Catalog.Format(msgs.locale, "gatewayImportAgent", nil)
+}
+
+// GatewayImportAllAgents says "All agents"
+// in the language the app shows.
+func GatewayImportAllAgents() string { return In(i18n.Locale()).GatewayImportAllAgents() }
+
+// GatewayImportAllAgents says "All agents"
+// in the language of msgs.
+func (msgs Messages) GatewayImportAllAgents() string {
+	return Catalog.Format(msgs.locale, "gatewayImportAllAgents", nil)
+}

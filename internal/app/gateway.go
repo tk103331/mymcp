@@ -1119,7 +1119,7 @@ func (a *app) openImportDialog(msgs locales.Messages) {
 	a.gwImportOpen = true
 	a.gwImportPlan, a.gwImportStats, a.gwImportError = nil, nil, ""
 	a.gwImportSelected = map[string]bool{}
-	a.gwImportQuery = ""
+	a.gwImportAgent, a.gwImportQuery = "", ""
 	if a.usage == nil {
 		a.gwImportError = msgs.GatewayDatabaseUnavailable()
 		return
@@ -1175,6 +1175,49 @@ func importRows(stats *importer.Stats) []importer.Result {
 	return rows
 }
 
+type importAgent struct {
+	ID    string
+	Label string
+}
+
+func (a *app) importAgentLabel(id string) string {
+	if a.syncManager != nil {
+		for _, status := range a.syncManager.Statuses() {
+			if status.Client == id {
+				return status.Label
+			}
+		}
+	}
+	return id
+}
+
+func (a *app) importAgents(plan *importer.Stats) []importAgent {
+	labels := map[string]string{}
+	if a.syncManager != nil {
+		for _, status := range a.syncManager.Statuses() {
+			labels[status.Client] = status.Label
+		}
+	}
+	seen := map[string]bool{}
+	var agents []importAgent
+	if plan == nil {
+		return nil
+	}
+	for _, result := range plan.Results {
+		if result.Client == "" || seen[result.Client] {
+			continue
+		}
+		seen[result.Client] = true
+		label := labels[result.Client]
+		if label == "" {
+			label = result.Client
+		}
+		agents = append(agents, importAgent{ID: result.Client, Label: label})
+	}
+	sort.Slice(agents, func(i, j int) bool { return agents[i].Label < agents[j].Label })
+	return agents
+}
+
 func (a *app) importDialog(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
 	ui.Modal(c, &a.gwImportOpen, func() {
 		ui.Column(c).Width(680).Gap(12).Children(func() {
@@ -1210,30 +1253,54 @@ func (a *app) importDialog(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
 					}
 					ui.Select(c, &a.gwImportProfile, names)
 				})
+				ui.Field(c, msgs.GatewayImportAgent(), func() {
+					agents := a.importAgents(a.gwImportPlan)
+					label := msgs.GatewayImportAllAgents()
+					for _, agent := range agents {
+						if agent.ID == a.gwImportAgent {
+							label = agent.Label
+							break
+						}
+					}
+					ui.MenuButton(c, label, func(m *ui.Menu) {
+						if m.Item(msgs.GatewayImportAllAgents()).Radio(true).Checked(a.gwImportAgent == "").Chosen() {
+							a.gwImportAgent = ""
+						}
+						for _, agent := range agents {
+							agent := agent
+							if m.Item(agent.Label).Radio(true).Checked(a.gwImportAgent == agent.ID).Chosen() {
+								a.gwImportAgent = agent.ID
+							}
+						}
+					}).Height(28).Padding(0, 10).Radius(8).Border(1, t.Border).FontSize(12)
+				})
 			})
 			rows := importRows(a.gwImportPlan)
+			query := strings.ToLower(strings.TrimSpace(a.gwImportQuery))
+			filtered := make([]importer.Result, 0, len(rows))
+			for _, row := range rows {
+				if a.gwImportAgent != "" && row.Client != a.gwImportAgent {
+					continue
+				}
+				if query == "" || strings.Contains(strings.ToLower(row.Name), query) || strings.Contains(strings.ToLower(row.Client), query) {
+					filtered = append(filtered, row)
+				}
+			}
 			ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
 				ui.SearchField(c, &a.gwImportQuery).Placeholder(msgs.ServersSearch()).Grow(1)
 				if ui.Button(c, msgs.GatewayImportSelectAll()).Clicked() {
-					for _, row := range rows {
+					for _, row := range filtered {
 						if row.Status != "invalid" {
 							a.gwImportSelected[row.Name] = true
 						}
 					}
 				}
 				if ui.Button(c, msgs.GatewayImportSelectNone()).Clicked() {
-					for _, row := range rows {
+					for _, row := range filtered {
 						a.gwImportSelected[row.Name] = false
 					}
 				}
 			})
-			query := strings.ToLower(strings.TrimSpace(a.gwImportQuery))
-			filtered := make([]importer.Result, 0, len(rows))
-			for _, row := range rows {
-				if query == "" || strings.Contains(strings.ToLower(row.Name), query) || strings.Contains(strings.ToLower(row.Client), query) {
-					filtered = append(filtered, row)
-				}
-			}
 			if len(filtered) == 0 {
 				ui.Text(c, msgs.GatewayImportEmpty()).FontSize(12).TextColor(t.TextMuted)
 			} else {
@@ -1264,7 +1331,7 @@ func (a *app) importDialog(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
 									}
 									ui.Text(c, text).FontSize(10.5).TextColor(color)
 								})
-								ui.Text(c, row.Client).FontSize(10).TextColor(t.TextMuted)
+								ui.Text(c, a.importAgentLabel(row.Client)).FontSize(10).TextColor(t.TextMuted)
 								if row.Error != "" {
 									ui.Text(c, row.Error).FontSize(10.5).TextColor(t.Danger)
 								}

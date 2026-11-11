@@ -497,5 +497,7 @@
   "gatewayImportExisting": "Registered",
   "gatewayImportInvalid": "Invalid",
   "gatewayImportNoSelection": "Select at least one server.",
-  "gatewayImportRescan": "Rescan"
+  "gatewayImportRescan": "Rescan",
+  "gatewayImportAgent": "Agent",
+  "gatewayImportAllAgents": "All agents"
 }

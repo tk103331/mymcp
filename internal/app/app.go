@@ -111,6 +111,7 @@ type app struct {
 	gwImportPlan     *importer.Stats
 	gwImportSelected map[string]bool
 	gwImportProfile  string
+	gwImportAgent    string
 	gwImportQuery    string
 	gwImportStats    *importer.Stats
 	gwImportError    string

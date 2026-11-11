@@ -151,8 +151,8 @@ bin/mymcp doctor
 `--require-key` 下也必须带。
 
 客户端导入支持 JSON、JSONC、TOML 和 YAML，自动去重，并跳过 MyMCP 自己写入的
-路由条目和 `mcp-pipe` 桥接条目。桌面端可以选择要导入的服务器和目标配置组；
-命令行使用 `--only name1,name2`。
+路由条目和 `mcp-pipe` 桥接条目。桌面端可以按 Agent 过滤、选择要导入的服务器和
+目标配置组；命令行使用 `--client ID` 与 `--only name1,name2`。
 
 Claude Desktop、Codex、Kiro 和 Zed 使用 `mcp-pipe` 桥接。桌面端会内置
 `mcp-pipe`，首次启动时复制到 `~/.mymcp/bin/mcp-pipe`，客户端配置直接写入该
