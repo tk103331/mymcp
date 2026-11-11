@@ -1,0 +1,202 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CGO_ENABLED: "0"
+
+jobs:
+  verify:
+    name: Verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Check the tag against mygo.json
+        id: version
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          configured="$(jq -r .version mygo.json)"
+          if [ "$version" != "$configured" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match mygo.json version $configured; bump mygo.json before tagging."
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Test
+        run: go test ./...
+      - name: Vet
+        run: |
+          go vet ./...
+          go tool mygo vet
+      - name: Check localizations
+        run: go tool mygo i18n check
+
+  cli:
+    name: CLI ${{ matrix.goos }}/${{ matrix.goarch }}
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        goos: [darwin, linux, windows]
+        goarch: [amd64, arm64]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          VERSION: ${{ needs.verify.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist/cli
+          suffix=""
+          if [ "$GOOS" = "windows" ]; then
+            suffix=".exe"
+          fi
+          for cmd in mymcp mcp-debug mcp-pipe mcp-router; do
+            go build -trimpath \
+              -ldflags="-s -w -X github.com/tk103331/mymcp/internal/gateway.Version=${VERSION}" \
+              -o "dist/cli/${cmd}${suffix}" "./cmd/${cmd}"
+          done
+          cp README.md README_zh.md LICENSE dist/cli/
+          archive="mymcp-cli_${VERSION}_${GOOS}_${GOARCH}"
+          if [ "$GOOS" = "windows" ]; then
+            (cd dist/cli && zip -qr "../${archive}.zip" .)
+          else
+            tar -C dist/cli -czf "dist/${archive}.tar.gz" .
+          fi
+      - uses: actions/upload-artifact@v7
+        with:
+          name: cli-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/mymcp-cli_*
+          if-no-files-found: error
+          retention-days: 7
+
+  desktop:
+    name: Desktop ${{ matrix.name }}
+    needs: verify
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS
+            os: macos-latest
+            platform: darwin/universal
+          - name: Linux
+            os: ubuntu-latest
+            platform: linux/amd64,linux/arm64
+          - name: Windows
+            os: ubuntu-latest
+            platform: windows/amd64,windows/arm64
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Install NSIS
+        if: matrix.name == 'Windows'
+        run: sudo apt-get update && sudo apt-get install -y nsis
+      - name: Bundle mcp-pipe
+        shell: bash
+        run: ./scripts/bundle-mcp-pipe.sh "${{ matrix.platform }}"
+      - name: Build
+        shell: bash
+        env:
+          VERSION: ${{ needs.verify.outputs.version }}
+          MYGO_LDFLAGS: -X github.com/tk103331/mymcp/internal/gateway.Version=${{ needs.verify.outputs.version }}
+        run: go tool mygo build -platform "${{ matrix.platform }}" -o dist/desktop
+      - name: Make the Windows portable archives
+        if: matrix.name == 'Windows'
+        shell: bash
+        env:
+          VERSION: ${{ needs.verify.outputs.version }}
+        run: |
+          set -euo pipefail
+          for arch in amd64 arm64; do
+            dir="dist/desktop/windows-${arch}"
+            [ -d "$dir" ] || continue
+            (cd "$dir" && zip -qr "$GITHUB_WORKSPACE/dist/desktop/mymcp-${VERSION}-windows-${arch}-portable.zip" .)
+          done
+      - uses: actions/upload-artifact@v7
+        with:
+          name: desktop-${{ matrix.name }}
+          path: |
+            dist/desktop/**/*.dmg
+            dist/desktop/**/*.tar.gz
+            dist/desktop/**/*.deb
+            dist/desktop/**/*-setup-*.exe
+            dist/desktop/*-portable.zip
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: Publish
+    needs: [cli, desktop]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Collect the release assets
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          cp LICENSE release/LICENSE
+          find dist -type f \
+            \( -name '*.dmg' -o -name '*.tar.gz' -o -name '*.deb' \
+               -o -name '*-setup-*.exe' -o -name '*-portable.zip' \) \
+            -exec cp {} release/ \;
+          cd release
+          find . -maxdepth 1 -type f ! -name SHA256SUMS.txt -printf '%f\n' \
+            | sort \
+            | xargs sha256sum > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+      - name: Publish the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="$GITHUB_REF_NAME"
+          title="MyMCP ${tag#v}"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$tag" release/* --repo "$GITHUB_REPOSITORY" --clobber
+            edit=(--draft=false --title "$title")
+            if [[ "$tag" == *-* ]]; then
+              edit+=(--prerelease)
+            fi
+            gh release edit "$tag" --repo "$GITHUB_REPOSITORY" "${edit[@]}"
+          else
+            flags=(--verify-tag --title "$title" --generate-notes)
+            if [[ "$tag" == *-* ]]; then
+              flags+=(--prerelease)
+            fi
+            gh release create "$tag" release/* --repo "$GITHUB_REPOSITORY" "${flags[@]}"
+          fi

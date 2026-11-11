@@ -1,0 +1,1171 @@
+package app
+
+import (
+	"context"
+	"fmt"
+	"io"
+	"log"
+	"net"
+	"net/http"
+	"sort"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/egoist/mygo"
+	"github.com/egoist/mygo/ui"
+	"github.com/tk103331/mymcp/internal/gateway"
+	"github.com/tk103331/mymcp/internal/importer"
+	"github.com/tk103331/mymcp/internal/oauth"
+	"github.com/tk103331/mymcp/internal/secrets"
+	"github.com/tk103331/mymcp/internal/store"
+	"github.com/tk103331/mymcp/locales"
+)
+
+func (a *app) loadGateway() {
+	if a.usage == nil {
+		a.gwServers, a.gwProfiles, a.gwCounts, a.gwStatus = nil, nil, nil, nil
+		return
+	}
+	ctx := context.Background()
+	servers, err := a.usage.ListServers(ctx)
+	if err != nil {
+		a.gwError = err.Error()
+		return
+	}
+	profiles, err := a.usage.ListProfiles(ctx)
+	if err != nil {
+		a.gwError = err.Error()
+		return
+	}
+	counts := map[string]int{}
+	for _, profile := range profiles {
+		list, err := a.usage.AllServersForProfile(ctx, profile.Name)
+		if err == nil {
+			counts[profile.Name] = len(list)
+		}
+	}
+	keys, err := a.usage.ListKeys(ctx)
+	if err != nil {
+		a.gwError = err.Error()
+		return
+	}
+	a.gwServers, a.gwProfiles, a.gwCounts, a.gwKeys = servers, profiles, counts, keys
+	if a.gwRunning && a.gwManager != nil {
+		a.gwStatus = a.gwManager.Statuses()
+	} else {
+		a.gwStatus = nil
+	}
+}
+
+func (a *app) startGateway(msgs locales.Messages) {
+	if a.gwRunning || a.gwStarting {
+		return
+	}
+	if a.usage == nil {
+		a.gwError = msgs.GatewayDatabaseUnavailable()
+		return
+	}
+	a.gwStarting, a.gwError = true, ""
+	addr := a.gwAddr
+	go func() {
+		secretStore := a.secretsStore
+		if secretStore == nil {
+			var err error
+			secretStore, err = secrets.Open(mymcpDir())
+			if err != nil {
+				a.finishGatewayStart(err)
+				return
+			}
+		}
+		manager, err := gateway.NewManager(context.Background(), a.usage, secretStore, gateway.ManagerOptions{
+			BaseURL: "http://" + addr, ToolSearch: true, ToolSearchThreshold: 10,
+		})
+		if err != nil {
+			a.finishGatewayStart(err)
+			return
+		}
+		listener, err := net.Listen("tcp", addr)
+		if err != nil {
+			manager.Close()
+			a.finishGatewayStart(err)
+			return
+		}
+		server := &http.Server{
+			Handler:           gateway.NewAuth(a.usage, false).Wrap(manager.Handler()),
+			ReadHeaderTimeout: 10 * time.Second,
+			IdleTimeout:       120 * time.Second,
+		}
+		apply := func() {
+			a.gwManager, a.gwServer = manager, server
+			a.gwRunning, a.gwStarting = true, false
+			a.gwError, a.gwDirty = "", false
+			a.loadGateway()
+		}
+		if a.win != nil {
+			a.win.Update(apply)
+		} else {
+			apply()
+		}
+		if err := server.Serve(listener); err != nil && err != http.ErrServerClosed {
+			log.Println("gateway:", err)
+			a.finishGatewayStart(err)
+		}
+	}()
+}
+
+func (a *app) finishGatewayStart(err error) {
+	log.Printf("gateway: %v", err)
+	finish := func() {
+		a.gwStarting, a.gwRunning, a.gwStatus = false, false, nil
+		a.gwError = err.Error()
+	}
+	if a.win != nil {
+		a.win.Update(finish)
+	} else {
+		finish()
+	}
+}
+
+func (a *app) stopGateway() {
+	server, manager := a.gwServer, a.gwManager
+	a.gwServer, a.gwManager = nil, nil
+	a.gwRunning, a.gwStarting = false, false
+	a.gwError, a.gwDirty, a.gwStatus = "", false, nil
+	if server != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		_ = server.Shutdown(ctx)
+		cancel()
+	}
+	if manager != nil {
+		manager.Close()
+	}
+	a.loadGateway()
+}
+
+// restartGateway rebuilds the profile gateways so registry changes apply.
+func (a *app) restartGateway(msgs locales.Messages) {
+	a.stopGateway()
+	a.startGateway(msgs)
+}
+
+func (a *app) gatewayPage(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
+	ui.Scroll(c).Grow(1).Padding(30, 28, 26, 28).Children(func() {
+		ui.Column(c).Gap(18).Children(func() {
+			ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
+				ui.Column(c).Gap(4).Children(func() {
+					ui.Text(c, msgs.GatewayTitle()).FontSize(24).Bold()
+					ui.Text(c, msgs.GatewaySubtitle()).FontSize(12.5).TextColor(t.TextMuted)
+				})
+				ui.Spacer(c)
+				a.gatewayStatus(c, t, msgs)
+				if ui.Button(c, msgs.GatewayAddServer()).Clicked() {
+					a.openAddServerDialog(c, msgs)
+				}
+				if ui.Button(c, msgs.GatewayImport()).Clicked() {
+					a.gwImportOpen, a.gwImportStats, a.gwImportError = true, nil, ""
+				}
+				if a.gwRunning || a.gwStarting {
+					if ui.Button(c, msgs.GatewayRestart()).Disabled(a.gwStarting).Clicked() {
+						a.restartGateway(msgs)
+					}
+					if ui.Button(c, msgs.GatewayStop()).Disabled(a.gwStarting).Clicked() {
+						a.stopGateway()
+					}
+				} else if ui.PrimaryButton(c, msgs.GatewayStart()).Clicked() {
+					a.startGateway(msgs)
+				}
+				if ui.Button(c, msgs.GatewayRefresh()).Clicked() {
+					a.loadGateway()
+				}
+			})
+
+			if a.gwError != "" {
+				ui.Text(c, a.gwError).FontSize(12).TextColor(t.Danger)
+			}
+			if a.gwDirty && a.gwRunning {
+				ui.Text(c, msgs.GatewayRestartHint()).FontSize(11.5).TextColor(t.Warning)
+			}
+
+			card := ui.Column(c).Padding(18).Gap(10).Radius(14).Background(t.Surface).Border(1, t.Border)
+			card.Children(func() {
+				ui.Text(c, msgs.GatewayEndpoint()).FontSize(14).Bold()
+				endpoint := "http://" + a.gwAddr + "/mcp/<profile>"
+				ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
+					ui.Text(c, endpoint).FontSize(12).TextColor(t.TextMuted).Grow(1).SingleLine()
+					if ui.Button(c, "").Label(msgs.Copy()).Tooltip(msgs.Copy()).Padding(3, 6).
+						Children(func() { ui.Icon(c, iconCopy).Size(12, 12) }).Clicked() {
+						mygo.Clipboard.WriteText(endpoint)
+						c.Toast(msgs.Copied())
+					}
+				})
+				ui.Text(c, msgs.GatewayHint()).FontSize(11.5).TextColor(t.TextMuted)
+			})
+
+			a.gatewayServers(c, t, msgs)
+			a.gatewayHealth(c, t, msgs)
+			a.gatewayProfiles(c, t, msgs)
+			a.gatewayKeys(c, t, msgs)
+		})
+	})
+}
+
+func (a *app) gatewayStatus(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
+	text, color := msgs.GatewayStopped(), t.TextMuted
+	if a.gwRunning {
+		text, color = msgs.GatewayRunning(), t.Success
+	} else if a.gwStarting {
+		text, color = msgs.GatewayStarting(), t.Warning
+	}
+	ui.Row(c).Padding(3, 9).Radius(999).Background(color.Alpha(0.12)).
+		AlignItems(ui.Center).Gap(6).Children(func() {
+		ui.Box(c).Size(6, 6).Radius(999).Background(color)
+		ui.Text(c, text).FontSize(11).TextColor(color)
+	})
+}
+
+func (a *app) gatewayServers(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
+	card := ui.Column(c).Padding(18).Gap(10).Radius(14).Background(t.Surface).Border(1, t.Border)
+	card.Children(func() {
+		ui.Text(c, msgs.GatewayServers()).FontSize(14).Bold()
+		if len(a.gwServers) == 0 {
+			ui.Text(c, msgs.GatewayNoServers()).FontSize(12).TextColor(t.TextMuted)
+			ui.Text(c, msgs.GatewayNoServersHint()).FontSize(11.5).TextColor(t.TextMuted)
+			return
+		}
+		rows := a.gwServers
+		columns := []ui.TableColumn{
+			{Title: msgs.ServiceName()},
+			{Title: msgs.GatewayTransport(), Width: 100},
+			{Title: msgs.GatewayEnabled(), Width: 80},
+			{Title: msgs.GatewayEndpoint(), Width: 280},
+			{Title: msgs.ServiceActions(), Width: 100, Fixed: true},
+		}
+		ui.Table(c, nil, columns, len(rows), func(row, col int) {
+			server := rows[row]
+			switch col {
+			case 0:
+				ui.Text(c, server.Name).FontSize(12).Bold().SingleLine()
+			case 1:
+				ui.Text(c, server.Transport).FontSize(11.5).TextColor(t.TextMuted)
+			case 2:
+				enabled := server.Enabled
+				if ui.Switch(c, &enabled).Label(server.Name).Changed() {
+					a.setServerEnabled(server, enabled, c, msgs)
+				}
+			case 3:
+				value := server.URL
+				if server.Transport == "stdio" {
+					value = server.Command
+				}
+				ui.Text(c, value).FontSize(11.5).TextColor(t.TextMuted).SingleLine()
+			case 4:
+				ui.Row(c).Gap(4).Children(func() {
+					if ui.Button(c, "").Label(msgs.Edit()).Tooltip(msgs.Edit()).
+						Padding(4, 7).Children(func() { ui.Icon(c, iconEdit).Size(12, 12) }).Clicked() {
+						a.openEditServerDialog(server, c)
+					}
+					if ui.Button(c, "").Label(msgs.GatewayDelete()).Tooltip(msgs.GatewayDelete()).
+						Padding(4, 7).Children(func() { ui.Icon(c, iconTrash).Size(12, 12).TextColor(t.Danger) }).Clicked() {
+						a.gwDelete = server
+					}
+				})
+			}
+		})
+	})
+}
+
+// gatewayHealth shows each running profile's server and tool counts and
+// the upstream errors the gateway saw while opening servers.
+func (a *app) gatewayHealth(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
+	if !a.gwRunning || len(a.gwStatus) == 0 {
+		return
+	}
+	names := make([]string, 0, len(a.gwStatus))
+	for name := range a.gwStatus {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	card := ui.Column(c).Padding(18).Gap(9).Radius(14).Background(t.Surface).Border(1, t.Border)
+	card.Children(func() {
+		ui.Text(c, msgs.GatewayHealth()).FontSize(14).Bold()
+		for _, name := range names {
+			status := a.gwStatus[name]
+			ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
+				ui.Text(c, name).FontSize(12).Bold()
+				ui.Textf(c, "%d/%d", status.Running, status.Servers).FontSize(11).TextColor(t.TextMuted)
+				ui.Textf(c, "%s: %d", msgs.UsageTools(), status.Tools).FontSize(11).TextColor(t.TextMuted)
+				if status.ToolSearch {
+					ui.Text(c, msgs.GatewayToolSearch()).FontSize(10).TextColor(t.Accent)
+				}
+			})
+			for _, serverName := range sortedKeys(status.Errors) {
+				ui.Textf(c, "%s: %s", serverName, status.Errors[serverName]).FontSize(11).TextColor(t.Danger)
+			}
+		}
+	})
+}
+
+func sortedKeys(values map[string]string) []string {
+	keys := make([]string, 0, len(values))
+	for key := range values {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+func (a *app) gatewayProfiles(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
+	card := ui.Column(c).Padding(18).Gap(10).Radius(14).Background(t.Surface).Border(1, t.Border)
+	card.Children(func() {
+		ui.Row(c).AlignItems(ui.Center).Children(func() {
+			ui.Text(c, msgs.GatewayProfiles()).FontSize(14).Bold()
+			ui.Spacer(c)
+			if ui.Button(c, msgs.GatewayNewProfile()).Clicked() {
+				a.openProfileDialog("")
+			}
+		})
+		if len(a.gwProfiles) == 0 {
+			ui.Text(c, msgs.GatewayNoProfiles()).FontSize(12).TextColor(t.TextMuted)
+			return
+		}
+		rows := a.gwProfiles
+		columns := []ui.TableColumn{
+			{Title: msgs.GatewayProfileName()},
+			{Title: msgs.Description()},
+			{Title: msgs.GatewayServerCount(), Width: 100, Align: ui.End},
+			{Title: msgs.ServiceActions(), Width: 90, Fixed: true},
+		}
+		ui.Table(c, nil, columns, len(rows), func(row, col int) {
+			profile := rows[row]
+			switch col {
+			case 0:
+				ui.Text(c, profile.Name).FontSize(12).Bold()
+			case 1:
+				ui.Text(c, profile.Description).FontSize(11.5).TextColor(t.TextMuted).SingleLine()
+			case 2:
+				ui.Textf(c, "%d", a.gwCounts[profile.Name]).FontSize(12)
+			case 3:
+				if ui.Button(c, msgs.Edit()).FontSize(11).Padding(3, 8).Clicked() {
+					a.openProfileDialog(profile.Name)
+				}
+			}
+		})
+	})
+}
+
+func (a *app) openProfileDialog(name string) {
+	if a.usage == nil {
+		return
+	}
+	a.gwProfileOpen = true
+	a.gwProfileEditing = name
+	a.gwProfileName, a.gwProfileDesc, a.gwProfileError = name, "", ""
+	a.gwProfileServers = map[string]bool{}
+	if name != "" {
+		for _, profile := range a.gwProfiles {
+			if profile.Name == name {
+				a.gwProfileDesc = profile.Description
+				break
+			}
+		}
+		if list, err := a.usage.AllServersForProfile(context.Background(), name); err == nil {
+			for _, server := range list {
+				a.gwProfileServers[server.Name] = true
+			}
+		}
+	}
+}
+
+func (a *app) saveProfile(c *ui.Context, msgs locales.Messages) {
+	if a.usage == nil {
+		a.gwProfileError = msgs.GatewayDatabaseUnavailable()
+		return
+	}
+	name := strings.TrimSpace(a.gwProfileName)
+	if name == "" {
+		a.gwProfileError = msgs.GatewayRequired()
+		return
+	}
+	if a.gwProfileEditing == "" {
+		for _, existing := range a.gwProfiles {
+			if existing.Name == name {
+				a.gwProfileError = msgs.GatewayProfileExists(name)
+				return
+			}
+		}
+	}
+	var profile *store.Profile
+	var err error
+	if a.gwProfileEditing == "" {
+		profile, err = a.usage.UpsertProfile(context.Background(), &store.Profile{
+			Name: name, Description: strings.TrimSpace(a.gwProfileDesc),
+		})
+	} else {
+		profile, err = a.usage.Profile(context.Background(), a.gwProfileEditing)
+		if err == nil {
+			profile.Description = strings.TrimSpace(a.gwProfileDesc)
+			profile, err = a.usage.UpsertProfile(context.Background(), profile)
+		}
+	}
+	if err != nil {
+		a.gwProfileError = err.Error()
+		return
+	}
+	for _, server := range a.gwServers {
+		if a.gwProfileServers[server.Name] {
+			err = a.usage.AttachServer(context.Background(), profile.Name, server.Name, true)
+		} else if a.gwProfileEditing != "" {
+			err = a.usage.DetachServer(context.Background(), profile.Name, server.Name)
+		}
+		if err != nil {
+			a.gwProfileError = err.Error()
+			return
+		}
+	}
+	a.gwProfileOpen = false
+	a.gwDirty = true
+	a.loadGateway()
+	c.Toast(msgs.GatewayProfileSaved())
+}
+
+func (a *app) profileDialog(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
+	ui.Modal(c, &a.gwProfileOpen, func() {
+		title := msgs.GatewayNewProfile()
+		if a.gwProfileEditing != "" {
+			title = msgs.GatewayEditProfile()
+		}
+		ui.Column(c).Width(560).Gap(12).Children(func() {
+			ui.Text(c, title).FontSize(18).Bold()
+			ui.Field(c, msgs.GatewayProfileName(), func() {
+				input := ui.TextInput(c, &a.gwProfileName).ReadOnly(a.gwProfileEditing != "")
+				if a.gwProfileEditing == "" {
+					input.AutoFocus()
+				}
+			})
+			ui.Field(c, msgs.GatewayProfileDescription(), func() {
+				ui.TextArea(c, &a.gwProfileDesc).Height(64)
+			})
+			ui.Text(c, msgs.GatewayProfileServers()).FontSize(12.5).Bold()
+			if len(a.gwServers) == 0 {
+				ui.Text(c, msgs.GatewayProfileNoServers()).FontSize(11.5).TextColor(t.TextMuted)
+			} else {
+				ui.Scroll(c).Height(210).Children(func() {
+					ui.Column(c).Gap(2).Children(func() {
+						for _, server := range a.gwServers {
+							server := server
+							attached := a.gwProfileServers[server.Name]
+							ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
+								if ui.Switch(c, &attached).Label(server.Name).Changed() {
+									a.gwProfileServers[server.Name] = attached
+								}
+								ui.Column(c).Gap(1).Children(func() {
+									ui.Text(c, server.Name).FontSize(12).Bold().SingleLine()
+									ui.Text(c, server.Transport).FontSize(10.5).TextColor(t.TextMuted)
+								})
+							})
+						}
+					})
+				})
+			}
+			if a.gwProfileError != "" {
+				ui.Text(c, a.gwProfileError).FontSize(12).TextColor(t.Danger)
+			}
+			ui.Row(c).Gap(8).Justify(ui.End).Children(func() {
+				if ui.Button(c, msgs.Cancel()).Clicked() {
+					a.gwProfileOpen = false
+				}
+				if ui.PrimaryButton(c, msgs.GatewaySaveProfile()).Clicked() {
+					a.saveProfile(c, msgs)
+				}
+			})
+		})
+	})
+}
+
+func (a *app) setServerEnabled(server *store.Server, enabled bool, c *ui.Context, msgs locales.Messages) {
+	if a.usage == nil {
+		c.Toast(msgs.GatewayDatabaseUnavailable())
+		return
+	}
+	copy := *server
+	copy.Enabled = enabled
+	if _, err := a.usage.UpsertServer(context.Background(), &copy); err != nil {
+		c.Toast(err.Error())
+		return
+	}
+	a.gwDirty = true
+	a.loadGateway()
+	c.Toast(msgs.GatewayServerToggled())
+}
+
+func (a *app) openAddServerDialog(c *ui.Context, msgs locales.Messages) {
+	if a.usage == nil {
+		a.gwError = msgs.GatewayDatabaseUnavailable()
+		return
+	}
+	_, _ = a.usage.EnsureDefaultProfile(context.Background())
+	a.gwAddOpen = true
+	a.gwEditing, a.gwTab = "", 0
+	a.gwName, a.gwTransport, a.gwCommand, a.gwArgs, a.gwURL = "", "stdio", "", "", ""
+	a.gwProfile = "default"
+	a.gwEnvText, a.gwHeadersText = "", ""
+	a.gwOAuth, a.gwAuthURL, a.gwTokenURL, a.gwClientID = false, "", "", ""
+	a.gwClientSecret, a.gwOAuthRedirect, a.gwScopesText, a.gwPKCE = "", "", "", true
+	a.gwOAuthBusy, a.gwOAuthNotice, a.gwOAuthError = false, "", ""
+	a.gwExecutor, a.gwImage, a.gwNetwork, a.gwVolumesText = "local", "", "", ""
+	a.gwError = ""
+	a.loadGateway()
+}
+
+func (a *app) openEditServerDialog(server *store.Server, c *ui.Context) {
+	a.gwAddOpen = true
+	a.gwEditing, a.gwTab = server.Name, 0
+	a.gwName, a.gwTransport, a.gwCommand, a.gwArgs, a.gwURL = server.Name, server.Transport, server.Command, joinArgs(server.Args), server.URL
+	a.gwProfile = "default"
+	a.gwEnvText, a.gwHeadersText = mapLines(server.Env), mapLines(server.Headers)
+	a.gwOAuth = server.OAuth != nil
+	a.gwOAuthBusy, a.gwOAuthNotice, a.gwOAuthError = false, "", ""
+	a.gwAuthURL, a.gwTokenURL, a.gwClientID, a.gwClientSecret = "", "", "", ""
+	a.gwOAuthRedirect, a.gwScopesText, a.gwPKCE = "", "", true
+	if server.OAuth != nil {
+		a.gwAuthURL = server.OAuth.AuthorizationURL
+		a.gwTokenURL = server.OAuth.TokenURL
+		a.gwClientID = server.OAuth.ClientID
+		a.gwClientSecret = server.OAuth.ClientSecret
+		a.gwOAuthRedirect = server.OAuth.RedirectURI
+		a.gwScopesText = strings.Join(server.OAuth.Scopes, " ")
+		a.gwPKCE = server.OAuth.UsePKCE
+	}
+	a.gwExecutor, a.gwImage, a.gwNetwork = server.Executor, server.Image, server.Network
+	if a.gwExecutor == "" {
+		a.gwExecutor = "local"
+	}
+	a.gwVolumesText = strings.Join(server.Volumes, "\n")
+	a.gwError = ""
+}
+
+func (a *app) oauthConfig() *store.OAuthConfig {
+	return &store.OAuthConfig{
+		AuthorizationURL: strings.TrimSpace(a.gwAuthURL),
+		TokenURL:         strings.TrimSpace(a.gwTokenURL),
+		ClientID:         strings.TrimSpace(a.gwClientID),
+		ClientSecret:     strings.TrimSpace(a.gwClientSecret),
+		Scopes:           strings.Fields(a.gwScopesText),
+		RedirectURI:      strings.TrimSpace(a.gwOAuthRedirect),
+		UsePKCE:          a.gwPKCE,
+	}
+}
+
+// loginOAuth saves the current OAuth fields, then runs the authorization
+// code flow in the browser and stores the token in the secret vault.
+func (a *app) loginOAuth(msgs locales.Messages) {
+	if a.gwEditing == "" {
+		a.gwOAuthError = msgs.GatewayOAuthSaveFirst()
+		return
+	}
+	if a.gwAuthURL == "" || a.gwTokenURL == "" || a.gwClientID == "" {
+		a.gwOAuthError = msgs.GatewayOAuthInvalid()
+		return
+	}
+	if a.secretsStore == nil {
+		a.gwOAuthError = msgs.SecretsUnavailable()
+		return
+	}
+	cfg := a.oauthConfig()
+	if err := a.usage.SetServerOAuth(context.Background(), a.gwEditing, cfg); err != nil {
+		a.gwOAuthError = err.Error()
+		return
+	}
+	a.gwOAuthBusy, a.gwOAuthNotice, a.gwOAuthError = true, "", ""
+	name := a.gwEditing
+	go func() {
+		_, err := oauth.Login(context.Background(), cfg, name, a.secretsStore,
+			func(url string) error { return mygo.Shell.OpenExternal(url) }, io.Discard)
+		finish := func() {
+			a.gwOAuthBusy = false
+			if err != nil {
+				a.gwOAuthError = err.Error()
+				return
+			}
+			a.gwOAuthError, a.gwOAuthNotice = "", msgs.GatewayOAuthConnected()
+			a.gwDirty = true
+		}
+		if a.win != nil {
+			a.win.Update(finish)
+		} else {
+			finish()
+		}
+	}()
+}
+
+func (a *app) saveServer(c *ui.Context, msgs locales.Messages) {
+	if a.usage == nil {
+		a.gwError = msgs.GatewayDatabaseUnavailable()
+		return
+	}
+	name := strings.TrimSpace(a.gwName)
+	if name == "" {
+		a.gwError = msgs.GatewayRequired()
+		return
+	}
+	transport := a.gwTransport
+	var server *store.Server
+	if a.gwEditing == "" {
+		if _, err := a.usage.GetServer(context.Background(), name); err == nil {
+			a.gwError = msgs.GatewayServerExists(name)
+			return
+		}
+	}
+	if a.gwEditing != "" {
+		existing, err := a.usage.GetServer(context.Background(), a.gwEditing)
+		if err != nil {
+			a.gwError = err.Error()
+			return
+		}
+		copy := *existing
+		server = &copy
+	} else {
+		server = &store.Server{IdleSeconds: 600, Enabled: true}
+	}
+	server.Name, server.Transport, server.Executor = name, transport, a.gwExecutor
+	server.Image, server.Network = a.gwImage, a.gwNetwork
+	server.Volumes = splitLines(a.gwVolumesText)
+	env, err := linesMap(a.gwEnvText)
+	if err != nil {
+		a.gwError = msgs.GatewayEnvironment() + ": " + err.Error()
+		return
+	}
+	headers, err := linesMap(a.gwHeadersText)
+	if err != nil {
+		a.gwError = msgs.GatewayHeaders() + ": " + err.Error()
+		return
+	}
+	server.Env, server.Headers = env, headers
+	if transport == "stdio" {
+		server.Command = strings.TrimSpace(a.gwCommand)
+		args, err := splitArgs(a.gwArgs)
+		if err != nil {
+			a.gwError = msgs.GatewayArguments() + ": " + err.Error()
+			return
+		}
+		server.Args = args
+		if a.gwExecutor != "docker" && server.Command == "" {
+			a.gwError = msgs.GatewayRequired()
+			return
+		}
+	} else {
+		server.URL = strings.TrimSpace(a.gwURL)
+		if server.URL == "" {
+			a.gwError = msgs.GatewayRequired()
+			return
+		}
+	}
+	if a.gwOAuth {
+		if a.gwAuthURL == "" || a.gwTokenURL == "" || a.gwClientID == "" {
+			a.gwError = msgs.GatewayRequired()
+			return
+		}
+		server.OAuth = a.oauthConfig()
+	} else {
+		server.OAuth = nil
+	}
+	if _, err := a.usage.UpsertServer(context.Background(), server); err != nil {
+		a.gwError = err.Error()
+		return
+	}
+	if a.gwEditing == "" {
+		profileName := a.gwProfile
+		if profileName == "" {
+			profileName = "default"
+		}
+		if err := a.usage.AttachServer(context.Background(), profileName, server.Name, true); err != nil {
+			a.gwError = err.Error()
+			return
+		}
+	}
+	a.gwAddOpen = false
+	a.gwDirty = true
+	a.loadGateway()
+	if a.gwEditing != "" {
+		c.Toast(msgs.GatewayServerUpdated())
+	} else {
+		c.Toast(msgs.GatewayServerAdded())
+	}
+}
+
+func linesMap(text string) (map[string]string, error) {
+	values := map[string]string{}
+	for _, line := range strings.Split(text, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		key, value, ok := strings.Cut(line, "=")
+		key = strings.TrimSpace(key)
+		if !ok || key == "" {
+			return nil, fmt.Errorf("%q: want KEY=VALUE", line)
+		}
+		values[key] = strings.TrimSpace(value)
+	}
+	if len(values) == 0 {
+		return nil, nil
+	}
+	return values, nil
+}
+
+func mapLines(values map[string]string) string {
+	if len(values) == 0 {
+		return ""
+	}
+	keys := make([]string, 0, len(values))
+	for key := range values {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	lines := make([]string, 0, len(keys))
+	for _, key := range keys {
+		lines = append(lines, key+"="+values[key])
+	}
+	return strings.Join(lines, "\n")
+}
+
+func splitLines(text string) []string {
+	var values []string
+	for _, line := range strings.Split(text, "\n") {
+		line = strings.TrimSpace(line)
+		if line != "" {
+			values = append(values, line)
+		}
+	}
+	return values
+}
+
+func (a *app) deleteServer(c *ui.Context, msgs locales.Messages) {
+	if a.gwDelete == nil {
+		return
+	}
+	if a.usage == nil {
+		c.Toast(msgs.GatewayDatabaseUnavailable())
+		a.gwDelete = nil
+		return
+	}
+	name := a.gwDelete.Name
+	if err := a.usage.DeleteServer(context.Background(), name); err != nil {
+		c.Toast(err.Error())
+	} else {
+		if a.secretsStore != nil {
+			_ = a.secretsStore.Delete(oauth.Key(name))
+		}
+		a.gwDirty = true
+		a.loadGateway()
+		c.Toast(msgs.GatewayServerDeleted())
+	}
+	a.gwDelete = nil
+}
+
+func (a *app) gatewayKeys(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
+	card := ui.Column(c).Padding(18).Gap(10).Radius(14).Background(t.Surface).Border(1, t.Border)
+	card.Children(func() {
+		ui.Row(c).AlignItems(ui.Center).Children(func() {
+			ui.Text(c, msgs.GatewayKeys()).FontSize(14).Bold()
+			ui.Spacer(c)
+			if ui.Button(c, msgs.GatewayCreateKey()).Clicked() {
+				a.gwKeyOpen = true
+				a.gwKeyName, a.gwKeyProfile, a.gwKeyExpiry, a.gwKeyToken, a.gwKeyError = "", msgs.GatewayAllProfiles(), "", "", ""
+				for _, profile := range a.gwProfiles {
+					if profile.Name == "default" {
+						a.gwKeyProfile = "default"
+						break
+					}
+				}
+				a.gwKeyRateText = "0"
+			}
+		})
+		if len(a.gwKeys) == 0 {
+			ui.Text(c, msgs.GatewayNoKeys()).FontSize(12).TextColor(t.TextMuted)
+			return
+		}
+		rows := a.gwKeys
+		columns := []ui.TableColumn{
+			{Title: msgs.GatewayKeyName()},
+			{Title: msgs.GatewayProfile(), Width: 130},
+			{Title: msgs.GatewayKeyRateShort(), Width: 120, Align: ui.End},
+			{Title: msgs.GatewayKeyExpiryShort(), Width: 110},
+			{Title: msgs.ServiceActions(), Width: 90, Fixed: true},
+		}
+		ui.Table(c, nil, columns, len(rows), func(row, col int) {
+			key := rows[row]
+			switch col {
+			case 0:
+				ui.Text(c, key.Name).FontSize(12).Bold().SingleLine()
+			case 1:
+				ui.Text(c, key.Profile).FontSize(11.5).TextColor(t.TextMuted)
+			case 2:
+				ui.Textf(c, "%d", key.RatePerMin).FontSize(11.5).TextColor(t.TextMuted)
+			case 3:
+				expires := "—"
+				if !key.ExpiresAt.IsZero() {
+					expires = key.ExpiresAt.Format("2006-01-02")
+				}
+				ui.Text(c, expires).FontSize(11.5).TextColor(t.TextMuted)
+			case 4:
+				if ui.Button(c, msgs.GatewayRevoke()).FontSize(11).Padding(3, 8).Clicked() {
+					a.gwKeyRevoke = key
+				}
+			}
+		})
+	})
+}
+
+func (a *app) createKey(c *ui.Context, msgs locales.Messages) {
+	if a.usage == nil {
+		a.gwKeyError = msgs.GatewayDatabaseUnavailable()
+		return
+	}
+	if strings.TrimSpace(a.gwKeyName) == "" {
+		a.gwKeyError = msgs.GatewayRequired()
+		return
+	}
+	expiry, err := parseExpiry(a.gwKeyExpiry, msgs)
+	if err != nil {
+		a.gwKeyError = err.Error()
+		return
+	}
+	rate := 0
+	if strings.TrimSpace(a.gwKeyRateText) != "" {
+		rate, err = strconv.Atoi(strings.TrimSpace(a.gwKeyRateText))
+		if err != nil || rate < 0 {
+			a.gwKeyError = msgs.GatewayRateInvalid()
+			return
+		}
+	}
+	profile := strings.TrimSpace(a.gwKeyProfile)
+	if profile == msgs.GatewayAllProfiles() {
+		profile = ""
+	}
+	token, _, err := a.usage.CreateKey(context.Background(), strings.TrimSpace(a.gwKeyName),
+		profile, rate, expiry)
+	if err != nil {
+		a.gwKeyError = err.Error()
+		return
+	}
+	a.gwKeyToken = token
+	a.gwKeyError = ""
+	a.loadGateway()
+	c.Toast(msgs.GatewayKeyCreated())
+}
+
+func (a *app) revokeKey(c *ui.Context, msgs locales.Messages) {
+	if a.gwKeyRevoke == nil {
+		return
+	}
+	if err := a.usage.RevokeKey(context.Background(), a.gwKeyRevoke.Name); err != nil {
+		c.Toast(err.Error())
+	} else {
+		a.loadGateway()
+		c.Toast(msgs.GatewayKeyRevoked())
+	}
+	a.gwKeyRevoke = nil
+}
+
+func parseExpiry(value string, msgs locales.Messages) (time.Time, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return time.Time{}, nil
+	}
+	if strings.HasSuffix(value, "d") {
+		days, err := strconv.Atoi(strings.TrimSuffix(value, "d"))
+		if err != nil || days <= 0 {
+			return time.Time{}, fmt.Errorf("%s: %q", msgs.GatewayExpiryInvalid(), value)
+		}
+		return time.Now().Add(time.Duration(days) * 24 * time.Hour), nil
+	}
+	duration, err := time.ParseDuration(value)
+	if err != nil || duration <= 0 {
+		return time.Time{}, fmt.Errorf("%s: %q", msgs.GatewayExpiryInvalid(), value)
+	}
+	return time.Now().Add(duration), nil
+}
+
+func (a *app) gatewayDialogs(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
+	a.addServerDialog(c, t, msgs)
+	a.deleteServerDialog(c, t, msgs)
+	a.keyDialog(c, t, msgs)
+	a.revokeKeyDialog(c, t, msgs)
+	a.importDialog(c, t, msgs)
+	a.profileDialog(c, t, msgs)
+}
+
+func (a *app) addServerDialog(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
+	ui.Modal(c, &a.gwAddOpen, func() {
+		ui.Column(c).Width(620).Gap(12).Children(func() {
+			title := msgs.GatewayAddServer()
+			if a.gwEditing != "" {
+				title = msgs.GatewayEditServer()
+			}
+			ui.Text(c, title).FontSize(18).Bold()
+			ui.Tabs(c, &a.gwTab, msgs.GatewayBasics(), msgs.GatewayEnvironment(), msgs.GatewayOAuth(), msgs.GatewaySandbox())
+			switch a.gwTab {
+			case 0:
+				ui.Field(c, msgs.GatewayServerName(), func() {
+					ui.TextInput(c, &a.gwName).AutoFocus().ReadOnly(a.gwEditing != "")
+				})
+				ui.Field(c, msgs.GatewayTransport(), func() {
+					ui.Select(c, &a.gwTransport, []string{"stdio", "http", "sse"})
+				})
+				if a.gwTransport == "stdio" {
+					ui.Field(c, msgs.GatewayCommand(), func() {
+						ui.TextInput(c, &a.gwCommand).Placeholder("npx")
+					})
+					ui.Field(c, msgs.GatewayArguments(), func() {
+						ui.TextInput(c, &a.gwArgs).Placeholder("-y @modelcontextprotocol/server-github")
+					})
+				} else {
+					ui.Field(c, msgs.GatewayURL(), func() { ui.TextInput(c, &a.gwURL) })
+				}
+				if a.gwEditing == "" {
+					profiles := make([]string, 0, len(a.gwProfiles))
+					for _, profile := range a.gwProfiles {
+						profiles = append(profiles, profile.Name)
+					}
+					if len(profiles) == 0 {
+						profiles = []string{"default"}
+					}
+					if a.gwProfile == "" {
+						a.gwProfile = profiles[0]
+					}
+					ui.Field(c, msgs.GatewayProfile(), func() {
+						ui.Select(c, &a.gwProfile, profiles)
+					})
+				}
+			case 1:
+				ui.Field(c, msgs.GatewayEnvironment(), func() {
+					ui.TextArea(c, &a.gwEnvText).Height(120).Placeholder(msgs.GatewayEnvPlaceholder())
+				})
+				ui.Field(c, msgs.GatewayHeaders(), func() {
+					ui.TextArea(c, &a.gwHeadersText).Height(120).Placeholder(msgs.GatewayHeadersPlaceholder())
+				})
+			case 2:
+				ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
+					ui.Switch(c, &a.gwOAuth).Label(msgs.GatewayOAuth())
+					ui.Text(c, msgs.GatewayOAuth()).FontSize(12)
+					ui.Text(c, msgs.GatewayOAuthHint()).FontSize(10.5).TextColor(t.TextMuted)
+				})
+				if a.gwOAuth {
+					ui.Field(c, msgs.GatewayAuthorizationURL(), func() { ui.TextInput(c, &a.gwAuthURL) })
+					ui.Field(c, msgs.GatewayTokenURL(), func() { ui.TextInput(c, &a.gwTokenURL) })
+					ui.Field(c, msgs.GatewayClientID(), func() { ui.TextInput(c, &a.gwClientID) })
+					ui.Field(c, msgs.GatewayClientSecret(), func() { ui.TextInput(c, &a.gwClientSecret).Placeholder("secret://name") })
+					ui.Field(c, msgs.GatewayScopes(), func() { ui.TextInput(c, &a.gwScopesText).Placeholder("mcp.read mcp.write") })
+					ui.Field(c, msgs.GatewayRedirectURI(), func() { ui.TextInput(c, &a.gwOAuthRedirect).Placeholder("http://127.0.0.1:33418/callback") })
+					ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
+						ui.Switch(c, &a.gwPKCE).Label(msgs.GatewayPKCE())
+						ui.Text(c, msgs.GatewayPKCE()).FontSize(12)
+					})
+					ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
+						if a.gwEditing == "" {
+							ui.Text(c, msgs.GatewayOAuthSaveFirst()).FontSize(11.5).TextColor(t.TextMuted)
+							return
+						}
+						if ui.Button(c, msgs.GatewayOAuthLogin()).Disabled(a.gwOAuthBusy).Clicked() {
+							a.loginOAuth(msgs)
+						}
+						if a.gwOAuthBusy {
+							ui.Text(c, msgs.GatewayOAuthBusy()).FontSize(11.5).TextColor(t.Warning)
+						}
+						if a.gwOAuthNotice != "" {
+							ui.Text(c, a.gwOAuthNotice).FontSize(11.5).TextColor(t.Success)
+						}
+						if a.gwOAuthError != "" {
+							ui.Text(c, a.gwOAuthError).FontSize(11.5).TextColor(t.Danger)
+						}
+					})
+				}
+			case 3:
+				ui.Field(c, msgs.GatewayExecutor(), func() {
+					label := msgs.GatewayExecutorLocal()
+					if a.gwExecutor == "docker" {
+						label = msgs.GatewayExecutorDocker()
+					}
+					ui.MenuButton(c, label, func(m *ui.Menu) {
+						if m.Item(msgs.GatewayExecutorLocal()).Radio(true).Checked(a.gwExecutor != "docker").Chosen() {
+							a.gwExecutor = "local"
+						}
+						if m.Item(msgs.GatewayExecutorDocker()).Radio(true).Checked(a.gwExecutor == "docker").Chosen() {
+							a.gwExecutor = "docker"
+						}
+					}).Height(28).Padding(0, 10).Radius(8).Border(1, t.Border).FontSize(12)
+				})
+				if a.gwExecutor == "docker" {
+					ui.Field(c, msgs.GatewayImage(), func() { ui.TextInput(c, &a.gwImage) })
+					ui.Field(c, msgs.GatewayNetwork(), func() { ui.TextInput(c, &a.gwNetwork).Placeholder(msgs.GatewayNetworkPlaceholder()) })
+					ui.Field(c, msgs.GatewayVolumes(), func() {
+						ui.TextArea(c, &a.gwVolumesText).Height(90).Placeholder(msgs.GatewayVolumesPlaceholder())
+					})
+				}
+			}
+			if a.gwError != "" {
+				ui.Text(c, a.gwError).FontSize(12).TextColor(t.Danger)
+			}
+			ui.Row(c).Gap(8).Justify(ui.End).Children(func() {
+				if ui.Button(c, msgs.Cancel()).Clicked() {
+					a.gwAddOpen = false
+				}
+				if ui.PrimaryButton(c, msgs.GatewaySave()).Clicked() {
+					a.saveServer(c, msgs)
+				}
+			})
+		})
+	})
+}
+
+func (a *app) deleteServerDialog(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
+	open := a.gwDelete != nil
+	ui.Modal(c, &open, func() {
+		ui.Column(c).Width(420).Gap(12).Children(func() {
+			ui.Text(c, msgs.GatewayDeleteTitle()).FontSize(17).Bold()
+			if a.gwDelete != nil {
+				ui.Text(c, msgs.GatewayDeleteMessage(a.gwDelete.Name)).FontSize(12.5).TextColor(t.TextMuted)
+			}
+			ui.Row(c).Gap(8).Justify(ui.End).Children(func() {
+				if ui.Button(c, msgs.Cancel()).Clicked() {
+					a.gwDelete = nil
+				}
+				if ui.PrimaryButton(c, msgs.GatewayDelete()).Clicked() {
+					a.deleteServer(c, msgs)
+				}
+			})
+		})
+	})
+	if !open {
+		a.gwDelete = nil
+	}
+}
+
+func (a *app) keyDialog(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
+	ui.Modal(c, &a.gwKeyOpen, func() {
+		ui.Column(c).Width(480).Gap(12).Children(func() {
+			if a.gwKeyToken != "" {
+				ui.Text(c, msgs.GatewayKeyTokenTitle()).FontSize(18).Bold()
+				ui.Text(c, msgs.GatewayKeyTokenHint()).FontSize(12).TextColor(t.TextMuted)
+				code := a.gwKeyToken
+				ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
+					ui.TextInput(c, &code).ReadOnly(true).Grow(1)
+					if ui.Button(c, msgs.Copy()).Clicked() {
+						mygo.Clipboard.WriteText(code)
+						c.Toast(msgs.Copied())
+					}
+				})
+				ui.Row(c).Justify(ui.End).Children(func() {
+					if ui.PrimaryButton(c, msgs.GatewayDone()).Clicked() {
+						a.gwKeyOpen, a.gwKeyToken = false, ""
+					}
+				})
+				return
+			}
+			ui.Text(c, msgs.GatewayCreateKey()).FontSize(18).Bold()
+			ui.Field(c, msgs.GatewayKeyName(), func() { ui.TextInput(c, &a.gwKeyName).AutoFocus() })
+			ui.Field(c, msgs.GatewayProfile(), func() {
+				profiles := []string{msgs.GatewayAllProfiles()}
+				for _, profile := range a.gwProfiles {
+					profiles = append(profiles, profile.Name)
+				}
+				ui.Select(c, &a.gwKeyProfile, profiles)
+			})
+			ui.Field(c, msgs.GatewayKeyRate(), func() { ui.TextInput(c, &a.gwKeyRateText) })
+			ui.Field(c, msgs.GatewayKeyExpiry(), func() { ui.TextInput(c, &a.gwKeyExpiry).Placeholder("30d") })
+			if a.gwKeyError != "" {
+				ui.Text(c, a.gwKeyError).FontSize(12).TextColor(t.Danger)
+			}
+			ui.Row(c).Gap(8).Justify(ui.End).Children(func() {
+				if ui.Button(c, msgs.Cancel()).Clicked() {
+					a.gwKeyOpen = false
+				}
+				if ui.PrimaryButton(c, msgs.GatewayCreateKey()).Clicked() {
+					a.createKey(c, msgs)
+				}
+			})
+		})
+	})
+}
+
+func (a *app) revokeKeyDialog(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
+	open := a.gwKeyRevoke != nil
+	ui.Modal(c, &open, func() {
+		ui.Column(c).Width(420).Gap(12).Children(func() {
+			ui.Text(c, msgs.GatewayKeyRevokeTitle()).FontSize(17).Bold()
+			if a.gwKeyRevoke != nil {
+				ui.Text(c, msgs.GatewayKeyRevokeMessage(a.gwKeyRevoke.Name)).FontSize(12.5).TextColor(t.TextMuted)
+			}
+			ui.Row(c).Gap(8).Justify(ui.End).Children(func() {
+				if ui.Button(c, msgs.Cancel()).Clicked() {
+					a.gwKeyRevoke = nil
+				}
+				if ui.PrimaryButton(c, msgs.GatewayRevoke()).Clicked() {
+					a.revokeKey(c, msgs)
+				}
+			})
+		})
+	})
+	if !open {
+		a.gwKeyRevoke = nil
+	}
+}
+
+func (a *app) importDialog(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
+	ui.Modal(c, &a.gwImportOpen, func() {
+		ui.Column(c).Width(480).Gap(12).Children(func() {
+			ui.Text(c, msgs.GatewayImportTitle()).FontSize(18).Bold()
+			if a.gwImportStats == nil {
+				ui.Text(c, msgs.GatewayImportHint()).FontSize(12.5).TextColor(t.TextMuted)
+				if a.gwImportError != "" {
+					ui.Text(c, a.gwImportError).FontSize(12).TextColor(t.Danger)
+				}
+				ui.Row(c).Gap(8).Justify(ui.End).Children(func() {
+					if ui.Button(c, msgs.Cancel()).Clicked() {
+						a.gwImportOpen = false
+					}
+					if ui.PrimaryButton(c, msgs.GatewayImport()).Clicked() {
+						if a.usage == nil {
+							a.gwImportError = msgs.GatewayDatabaseUnavailable()
+							return
+						}
+						if a.syncManager == nil {
+							a.gwImportError = msgs.GatewayConfigUnavailable()
+							return
+						}
+						stats, err := importer.Import(context.Background(), a.usage, a.syncManager, "default", "", false)
+						if err != nil {
+							a.gwImportError = err.Error()
+							return
+						}
+						a.gwImportStats = stats
+						a.gwImportError = ""
+						a.gwDirty = true
+						a.loadGateway()
+					}
+				})
+				return
+			}
+			stats := a.gwImportStats
+			if stats.Imported+stats.Existing+stats.Duplicate+stats.Invalid == 0 {
+				ui.Text(c, msgs.GatewayImportEmpty()).FontSize(12.5).TextColor(t.TextMuted)
+			} else {
+				ui.Text(c, msgs.GatewayImportSummary(stats.Imported, stats.Existing, stats.Duplicate, stats.Invalid)).
+					FontSize(12.5).TextColor(t.TextMuted)
+			}
+			for _, result := range stats.Results {
+				if result.Status == "invalid" {
+					ui.Textf(c, "%s (%s): %s", result.Name, result.Client, result.Error).
+						FontSize(11).TextColor(t.Danger)
+				}
+			}
+			ui.Row(c).Justify(ui.End).Children(func() {
+				if ui.PrimaryButton(c, msgs.GatewayImportDone()).Clicked() {
+					a.gwImportOpen = false
+				}
+			})
+		})
+	})
+}

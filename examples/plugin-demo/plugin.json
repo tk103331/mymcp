@@ -1,0 +1,13 @@
+{
+  "id": "demo-agent",
+  "label": "Demo Agent",
+  "version": "1.0.0",
+  "description": "Example JavaScript adapter for a fictional MCP client.",
+  "entry": "index.js",
+  "format": "json",
+  "paths": {
+    "darwin": "~/.demo-agent/mcp.json",
+    "linux": "~/.demo-agent/mcp.json",
+    "windows": "%APPDATA%\\DemoAgent\\mcp.json"
+  }
+}
