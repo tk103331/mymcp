@@ -301,7 +301,7 @@ func TestDebugPage(t *testing.T) {
 	tt := ui.NewTester(a.view, 1100, 800)
 	tt.SetLocale("zh-Hans")
 	tt.Frame()
-	for _, text := range []string{"MCP 调试", "demo__echo", "参数结构", "调用工具"} {
+	for _, text := range []string{"MCP 调试", "echo", "demo", "参数结构", "调用工具"} {
 		if !tt.HasText(text) {
 			t.Fatalf("debug page is missing %q: %q", text, tt.Texts())
 		}

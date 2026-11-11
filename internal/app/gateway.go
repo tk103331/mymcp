@@ -1119,7 +1119,7 @@ func (a *app) openImportDialog(msgs locales.Messages) {
 	a.gwImportOpen = true
 	a.gwImportPlan, a.gwImportStats, a.gwImportError = nil, nil, ""
 	a.gwImportSelected = map[string]bool{}
-	a.gwImportAgent, a.gwImportQuery = "", ""
+	a.gwImportAgent, a.gwImportQuery = msgs.GatewayImportAllAgents(), ""
 	if a.usage == nil {
 		a.gwImportError = msgs.GatewayDatabaseUnavailable()
 		return
@@ -1255,31 +1255,21 @@ func (a *app) importDialog(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
 				})
 				ui.Field(c, msgs.GatewayImportAgent(), func() {
 					agents := a.importAgents(a.gwImportPlan)
-					label := msgs.GatewayImportAllAgents()
+					labels := make([]string, 0, len(agents)+1)
+					labels = append(labels, msgs.GatewayImportAllAgents())
 					for _, agent := range agents {
-						if agent.ID == a.gwImportAgent {
-							label = agent.Label
-							break
-						}
+						labels = append(labels, agent.Label)
 					}
-					ui.MenuButton(c, label, func(m *ui.Menu) {
-						if m.Item(msgs.GatewayImportAllAgents()).Radio(true).Checked(a.gwImportAgent == "").Chosen() {
-							a.gwImportAgent = ""
-						}
-						for _, agent := range agents {
-							agent := agent
-							if m.Item(agent.Label).Radio(true).Checked(a.gwImportAgent == agent.ID).Chosen() {
-								a.gwImportAgent = agent.ID
-							}
-						}
-					}).Height(28).Padding(0, 10).Radius(8).Border(1, t.Border).FontSize(12)
+					ui.Select(c, &a.gwImportAgent, labels)
 				})
 			})
 			rows := importRows(a.gwImportPlan)
 			query := strings.ToLower(strings.TrimSpace(a.gwImportQuery))
 			filtered := make([]importer.Result, 0, len(rows))
+			allAgents := msgs.GatewayImportAllAgents()
 			for _, row := range rows {
-				if a.gwImportAgent != "" && row.Client != a.gwImportAgent {
+				if a.gwImportAgent != "" && a.gwImportAgent != allAgents &&
+					a.importAgentLabel(row.Client) != a.gwImportAgent {
 					continue
 				}
 				if query == "" || strings.Contains(strings.ToLower(row.Name), query) || strings.Contains(strings.ToLower(row.Client), query) {
@@ -1304,7 +1294,7 @@ func (a *app) importDialog(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
 			if len(filtered) == 0 {
 				ui.Text(c, msgs.GatewayImportEmpty()).FontSize(12).TextColor(t.TextMuted)
 			} else {
-				listHeight := float32(48 + len(filtered)*48)
+				listHeight := float32(len(filtered)*42 + 8)
 				if listHeight < 96 {
 					listHeight = 96
 				}

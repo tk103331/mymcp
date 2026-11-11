@@ -87,6 +87,22 @@ func (a *app) filteredDebugTools() []gateway.ToolInfo {
 	return out
 }
 
+type debugToolGroup struct {
+	Server string
+	Tools  []gateway.ToolInfo
+}
+
+func groupDebugTools(tools []gateway.ToolInfo) []debugToolGroup {
+	var groups []debugToolGroup
+	for _, tool := range tools {
+		if len(groups) == 0 || groups[len(groups)-1].Server != tool.Server {
+			groups = append(groups, debugToolGroup{Server: tool.Server})
+		}
+		groups[len(groups)-1].Tools = append(groups[len(groups)-1].Tools, tool)
+	}
+	return groups
+}
+
 func (a *app) debugTool() (gateway.ToolInfo, bool) {
 	for _, tool := range a.debugTools {
 		if tool.Name == a.debugSelected {
@@ -234,18 +250,28 @@ func (a *app) debugPage(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
 				}
 				ui.Scroll(c).Grow(1).Children(func() {
 					ui.Column(c).Gap(2).Children(func() {
-						for _, tool := range tools {
-							tool := tool
-							row := ui.ButtonBase(c).Padding(7, 9).Gap(3).Radius(7)
-							if a.debugSelected == tool.Name {
-								row.Background(t.Accent.Alpha(0.12))
-							}
-							row.Children(func() {
-								ui.Text(c, tool.Name).FontSize(11.5).Bold().SingleLine()
-								ui.Text(c, tool.Server).FontSize(10).TextColor(t.TextMuted).SingleLine()
+						for _, group := range groupDebugTools(tools) {
+							group := group
+							ui.Row(c).Padding(6, 4).AlignItems(ui.Center).Gap(6).Children(func() {
+								ui.Text(c, group.Server).FontSize(10).Bold().TextColor(t.TextMuted)
+								ui.Spacer(c)
+								ui.Textf(c, "%d", len(group.Tools)).FontSize(10).TextColor(t.TextMuted)
 							})
-							if row.Clicked() {
-								a.selectDebugTool(tool.Name)
+							for _, tool := range group.Tools {
+								tool := tool
+								row := ui.ButtonBase(c).Padding(7, 8).Gap(3).Radius(7).Justify(ui.Start)
+								if a.debugSelected == tool.Name {
+									row.Background(t.Accent.Alpha(0.12))
+								}
+								row.Children(func() {
+									ui.Text(c, tool.Tool).FontSize(11.5).Bold().SingleLine()
+									if tool.Description != "" {
+										ui.Text(c, tool.Description).FontSize(9.5).TextColor(t.TextMuted).MaxLines(1)
+									}
+								})
+								if row.Clicked() {
+									a.selectDebugTool(tool.Name)
+								}
 							}
 						}
 					})
@@ -265,8 +291,8 @@ func (a *app) debugPage(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
 					header := ui.Column(c).Padding(16).Gap(4).Radius(14).
 						Background(t.Surface).Border(1, t.Border)
 					header.Children(func() {
-						ui.Text(c, tool.Name).FontSize(16).Bold().SingleLine()
-						ui.Text(c, tool.Server+" · "+tool.Tool).FontSize(11).TextColor(t.TextMuted)
+						ui.Text(c, tool.Tool).FontSize(16).Bold().SingleLine()
+						ui.Text(c, tool.Server).FontSize(11).TextColor(t.TextMuted)
 						if tool.Description != "" {
 							ui.Text(c, tool.Description).FontSize(12).TextColor(t.TextMuted)
 						}
