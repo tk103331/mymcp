@@ -88,7 +88,7 @@ func (a *app) overviewPage(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
 						a.openAddServerDialog(c, msgs)
 					}
 					if ui.Button(c, msgs.GatewayImport()).Clicked() {
-						a.gwImportOpen, a.gwImportStats, a.gwImportError = true, nil, ""
+						a.openImportDialog(msgs)
 					}
 					if ui.Button(c, msgs.NavCatalog()).Clicked() {
 						a.router.Push("/catalog")

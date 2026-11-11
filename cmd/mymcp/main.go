@@ -92,7 +92,7 @@ func printUsage() {
   mymcp client list | plan|apply|detach|restore ID [--url URL]
   mymcp usage [--limit N] [--stats] [--since 24h]
   mymcp key create NAME [--profile P] [--rate N] [--expires 30d] | list | revoke NAME
-  mymcp import [--profile P] [--client ID] [--dry-run]
+  mymcp import [--profile P] [--client ID] [--only NAMES] [--dry-run]
   mymcp plugin list | install DIR | remove ID
   mymcp oauth discover SERVER | login SERVER | status SERVER | logout SERVER
   mymcp doctor
@@ -1134,6 +1134,7 @@ func importServers(args []string) error {
 	fs := flag.NewFlagSet("import", flag.ExitOnError)
 	profileName := fs.String("profile", "default", "profile to add imported servers to")
 	clientID := fs.String("client", "", "only this client")
+	only := fs.String("only", "", "comma-separated server names to import")
 	dry := fs.Bool("dry-run", false, "show what would be imported")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -1147,7 +1148,16 @@ func importServers(args []string) error {
 	if err != nil {
 		return err
 	}
-	stats, err := importer.Import(context.Background(), db, sync, *profileName, *clientID, *dry)
+	var selected map[string]bool
+	if value := strings.TrimSpace(*only); value != "" {
+		selected = map[string]bool{}
+		for _, name := range strings.Split(value, ",") {
+			if name = strings.TrimSpace(name); name != "" {
+				selected[name] = true
+			}
+		}
+	}
+	stats, err := importer.ImportSelected(context.Background(), db, sync, *profileName, *clientID, selected, *dry)
 	if err != nil {
 		return err
 	}

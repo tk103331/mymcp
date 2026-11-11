@@ -123,6 +123,7 @@ bin/mymcp oauth discover github            # RFC 9728/8414 + dynamic registratio
 bin/mymcp oauth login github               # authorization code + PKCE
 bin/mymcp oauth status github
 bin/mymcp import --client cursor
+bin/mymcp import --only github,postgres  # choose servers
 bin/mymcp plugin install ./examples/plugin-demo
 bin/mymcp profile export default --output work.mymcp.json --sign-key bundle.key
 bin/mymcp profile import work.mymcp.json --name shared --verify-key bundle.pub
@@ -165,7 +166,9 @@ per-client keys; remote requests always need one, and local requests need one
 with `--require-key`.
 
 The client importer reads JSON, JSONC, TOML and YAML configurations, skips
-duplicates and ignores MyMCP's own router entries and `mcp-pipe` bridges.
+duplicates and ignores MyMCP's own router entries and `mcp-pipe` bridges. In
+the app, choose the detected servers to import and the destination profile;
+the CLI accepts `--only name1,name2`.
 
 Claude Desktop, Codex, Kiro and Zed use the `mcp-pipe` bridge. Desktop builds
 bundle `mcp-pipe`; the app copies it to `~/.mymcp/bin/mcp-pipe` and writes that

@@ -277,7 +277,7 @@
   "clientsDetectedNo": "未找到",
   "gatewayImport": "导入",
   "gatewayImportTitle": "导入 MCP 服务器",
-  "gatewayImportHint": "从已检测的客户端导入服务器到默认配置组。MyMCP 自己写入的条目会被跳过。",
+  "gatewayImportHint": "从已检测客户端选择服务器和接收配置组。MyMCP 自己写入的条目会被跳过。",
   "gatewayImportDone": "完成",
   "gatewayImportSummary": "已导入 {imported}，已存在 {existing}，重复 {duplicate}，无效 {invalid}。",
   "gatewayImportEmpty": "没有可导入的新服务器。",
@@ -404,5 +404,14 @@
   "catalogSubtitle": "从内置目录添加 MCP 服务器。",
   "gatewayReady": "就绪",
   "gatewayDisabled": "已禁用",
-  "gatewayRestartNeeded": "需要重启"
+  "gatewayRestartNeeded": "需要重启",
+  "gatewayImportSelect": "检测到的服务器",
+  "gatewayImportSelectAll": "全选",
+  "gatewayImportSelectNone": "全不选",
+  "gatewayImportSelected": "已选 {count}",
+  "gatewayImportNew": "新增",
+  "gatewayImportExisting": "已注册",
+  "gatewayImportInvalid": "无效",
+  "gatewayImportNoSelection": "请至少选择一个服务器。",
+  "gatewayImportRescan": "重新扫描"
 }

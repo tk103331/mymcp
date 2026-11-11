@@ -86,6 +86,8 @@
 - 安装/重载/移除 JavaScript 客户端适配器。
 - 插件运行在 moejs，64 MiB、10 秒限制，无文件/网络/定时器。
 - 导入现有客户端配置，过滤 MyMCP 路由和 `mcp-pipe` 桥接条目。
+- 导入前扫描并列出检测到的服务器，可选择单个服务器、全选/全不选，并选择目标配置组。
+- CLI `mymcp import --only name1,name2` 支持同样的选择。
 - 重复服务器会附加到目标 Profile，而不是丢弃。
 - 导入失败会在界面显示服务器名和错误。
 
@@ -104,7 +106,7 @@ go test ./...                    通过
 go test -race ./...              通过
 go vet ./...                     通过
 go tool mygo vet                 通过
-go tool mygo i18n check          通过（405 条中英文文案）
+go tool mygo i18n check          通过（414 条中英文文案）
 go tool mygo build               通过
 ```
 

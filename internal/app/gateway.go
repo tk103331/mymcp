@@ -1115,57 +1115,196 @@ func (a *app) revokeKeyDialog(c *ui.Context, t *ui.Theme, msgs locales.Messages)
 	}
 }
 
+func (a *app) openImportDialog(msgs locales.Messages) {
+	a.gwImportOpen = true
+	a.gwImportPlan, a.gwImportStats, a.gwImportError = nil, nil, ""
+	a.gwImportSelected = map[string]bool{}
+	a.gwImportQuery = ""
+	if a.usage == nil {
+		a.gwImportError = msgs.GatewayDatabaseUnavailable()
+		return
+	}
+	if a.syncManager == nil {
+		a.gwImportError = msgs.GatewayConfigUnavailable()
+		return
+	}
+	if profiles, err := a.usage.ListProfiles(context.Background()); err == nil {
+		a.gwProfiles = profiles
+	}
+	if len(a.gwProfiles) == 0 {
+		if _, err := a.usage.EnsureDefaultProfile(context.Background()); err == nil {
+			a.gwProfiles, _ = a.usage.ListProfiles(context.Background())
+		}
+	}
+	a.gwImportProfile = ""
+	for _, profile := range a.gwProfiles {
+		if a.gwImportProfile == "" {
+			a.gwImportProfile = profile.Name
+		}
+		if profile.Name == "default" {
+			a.gwImportProfile = "default"
+			break
+		}
+	}
+	plan, err := importer.Import(context.Background(), a.usage, a.syncManager, a.gwImportProfile, "", true)
+	if err != nil {
+		a.gwImportError = err.Error()
+		return
+	}
+	a.gwImportPlan = plan
+	for _, result := range plan.Results {
+		if result.Status == "imported" || result.Status == "existing" {
+			a.gwImportSelected[result.Name] = true
+		}
+	}
+}
+
+func importRows(stats *importer.Stats) []importer.Result {
+	if stats == nil {
+		return nil
+	}
+	seen := map[string]bool{}
+	rows := make([]importer.Result, 0, len(stats.Results))
+	for _, result := range stats.Results {
+		if result.Status == "duplicate" || seen[result.Name] {
+			continue
+		}
+		seen[result.Name] = true
+		rows = append(rows, result)
+	}
+	return rows
+}
+
 func (a *app) importDialog(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
 	ui.Modal(c, &a.gwImportOpen, func() {
-		ui.Column(c).Width(480).Gap(12).Children(func() {
+		ui.Column(c).Width(680).Gap(12).Children(func() {
 			ui.Text(c, msgs.GatewayImportTitle()).FontSize(18).Bold()
-			if a.gwImportStats == nil {
-				ui.Text(c, msgs.GatewayImportHint()).FontSize(12.5).TextColor(t.TextMuted)
-				if a.gwImportError != "" {
-					ui.Text(c, a.gwImportError).FontSize(12).TextColor(t.Danger)
+			if a.gwImportStats != nil {
+				stats := a.gwImportStats
+				if stats.Imported+stats.Existing+stats.Duplicate+stats.Invalid == 0 {
+					ui.Text(c, msgs.GatewayImportEmpty()).FontSize(12.5).TextColor(t.TextMuted)
+				} else {
+					ui.Text(c, msgs.GatewayImportSummary(stats.Imported, stats.Existing, stats.Duplicate, stats.Invalid)).
+						FontSize(12.5).TextColor(t.TextMuted)
 				}
-				ui.Row(c).Gap(8).Justify(ui.End).Children(func() {
-					if ui.Button(c, msgs.Cancel()).Clicked() {
-						a.gwImportOpen = false
+				for _, result := range stats.Results {
+					if result.Status == "invalid" {
+						ui.Textf(c, "%s (%s): %s", result.Name, result.Client, result.Error).
+							FontSize(11).TextColor(t.Danger)
 					}
-					if ui.PrimaryButton(c, msgs.GatewayImport()).Clicked() {
-						if a.usage == nil {
-							a.gwImportError = msgs.GatewayDatabaseUnavailable()
-							return
-						}
-						if a.syncManager == nil {
-							a.gwImportError = msgs.GatewayConfigUnavailable()
-							return
-						}
-						stats, err := importer.Import(context.Background(), a.usage, a.syncManager, "default", "", false)
-						if err != nil {
-							a.gwImportError = err.Error()
-							return
-						}
-						a.gwImportStats = stats
-						a.gwImportError = ""
-						a.gwDirty = true
-						a.loadGateway()
+				}
+				ui.Row(c).Justify(ui.End).Children(func() {
+					if ui.PrimaryButton(c, msgs.GatewayImportDone()).Clicked() {
+						a.gwImportOpen = false
 					}
 				})
 				return
 			}
-			stats := a.gwImportStats
-			if stats.Imported+stats.Existing+stats.Duplicate+stats.Invalid == 0 {
-				ui.Text(c, msgs.GatewayImportEmpty()).FontSize(12.5).TextColor(t.TextMuted)
-			} else {
-				ui.Text(c, msgs.GatewayImportSummary(stats.Imported, stats.Existing, stats.Duplicate, stats.Invalid)).
-					FontSize(12.5).TextColor(t.TextMuted)
-			}
-			for _, result := range stats.Results {
-				if result.Status == "invalid" {
-					ui.Textf(c, "%s (%s): %s", result.Name, result.Client, result.Error).
-						FontSize(11).TextColor(t.Danger)
+
+			ui.Text(c, msgs.GatewayImportHint()).FontSize(12.5).TextColor(t.TextMuted)
+			ui.Form(c, func() {
+				ui.Field(c, msgs.GatewayProfile(), func() {
+					names := make([]string, len(a.gwProfiles))
+					for i, profile := range a.gwProfiles {
+						names[i] = profile.Name
+					}
+					ui.Select(c, &a.gwImportProfile, names)
+				})
+			})
+			rows := importRows(a.gwImportPlan)
+			ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
+				ui.SearchField(c, &a.gwImportQuery).Placeholder(msgs.ServersSearch()).Grow(1)
+				if ui.Button(c, msgs.GatewayImportSelectAll()).Clicked() {
+					for _, row := range rows {
+						if row.Status != "invalid" {
+							a.gwImportSelected[row.Name] = true
+						}
+					}
+				}
+				if ui.Button(c, msgs.GatewayImportSelectNone()).Clicked() {
+					for _, row := range rows {
+						a.gwImportSelected[row.Name] = false
+					}
+				}
+			})
+			query := strings.ToLower(strings.TrimSpace(a.gwImportQuery))
+			filtered := make([]importer.Result, 0, len(rows))
+			for _, row := range rows {
+				if query == "" || strings.Contains(strings.ToLower(row.Name), query) || strings.Contains(strings.ToLower(row.Client), query) {
+					filtered = append(filtered, row)
 				}
 			}
-			ui.Row(c).Justify(ui.End).Children(func() {
-				if ui.PrimaryButton(c, msgs.GatewayImportDone()).Clicked() {
+			if len(filtered) == 0 {
+				ui.Text(c, msgs.GatewayImportEmpty()).FontSize(12).TextColor(t.TextMuted)
+			} else {
+				listHeight := float32(48 + len(filtered)*48)
+				if listHeight < 96 {
+					listHeight = 96
+				}
+				if listHeight > 250 {
+					listHeight = 250
+				}
+				ui.Scroll(c).Height(listHeight).Children(func() {
+					ui.Column(c).Gap(2).Children(func() {
+						for _, row := range filtered {
+							row := row
+							checked := a.gwImportSelected[row.Name]
+							ui.Column(c).Padding(6, 8).Gap(1).Radius(7).Children(func() {
+								ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
+									if ui.Checkbox(c, &checked, row.Name).Disabled(row.Status == "invalid").Changed() {
+										a.gwImportSelected[row.Name] = checked
+									}
+									ui.Spacer(c)
+									text, color := msgs.GatewayImportNew(), t.Success
+									switch row.Status {
+									case "existing":
+										text, color = msgs.GatewayImportExisting(), t.Accent
+									case "invalid":
+										text, color = msgs.GatewayImportInvalid(), t.Danger
+									}
+									ui.Text(c, text).FontSize(10.5).TextColor(color)
+								})
+								ui.Text(c, row.Client).FontSize(10).TextColor(t.TextMuted)
+								if row.Error != "" {
+									ui.Text(c, row.Error).FontSize(10.5).TextColor(t.Danger)
+								}
+							})
+						}
+					})
+				})
+			}
+			selected := 0
+			for _, row := range rows {
+				if a.gwImportSelected[row.Name] {
+					selected++
+				}
+			}
+			ui.Text(c, msgs.GatewayImportSelected(strconv.Itoa(selected))).FontSize(11).TextColor(t.TextMuted)
+			if a.gwImportError != "" {
+				ui.Text(c, a.gwImportError).FontSize(12).TextColor(t.Danger)
+			}
+			ui.Row(c).Gap(8).Justify(ui.End).Children(func() {
+				if ui.Button(c, msgs.Cancel()).Clicked() {
 					a.gwImportOpen = false
+				}
+				if ui.Button(c, msgs.GatewayImportRescan()).Clicked() {
+					a.openImportDialog(msgs)
+				}
+				if ui.PrimaryButton(c, msgs.GatewayImport()).Disabled(selected == 0).Clicked() {
+					if a.usage == nil {
+						a.gwImportError = msgs.GatewayDatabaseUnavailable()
+						return
+					}
+					stats, err := importer.ImportSelected(context.Background(), a.usage, a.syncManager,
+						a.gwImportProfile, "", a.gwImportSelected, false)
+					if err != nil {
+						a.gwImportError = err.Error()
+						return
+					}
+					a.gwImportStats = stats
+					a.gwImportError = ""
+					a.gwDirty = true
+					a.loadGateway()
 				}
 			})
 		})

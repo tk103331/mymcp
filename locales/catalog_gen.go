@@ -2808,11 +2808,11 @@ func (msgs Messages) GatewayImportTitle() string {
 	return Catalog.Format(msgs.locale, "gatewayImportTitle", nil)
 }
 
-// GatewayImportHint says "Import servers from detected clients into the default profile. Entries managed by MyMCP are skipped."
+// GatewayImportHint says "Choose servers from detected clients and a profile to receive them. MyMCP-managed entries are skipped."
 // in the language the app shows.
 func GatewayImportHint() string { return In(i18n.Locale()).GatewayImportHint() }
 
-// GatewayImportHint says "Import servers from detected clients into the default profile. Entries managed by MyMCP are skipped."
+// GatewayImportHint says "Choose servers from detected clients and a profile to receive them. MyMCP-managed entries are skipped."
 // in the language of msgs.
 func (msgs Messages) GatewayImportHint() string {
 	return Catalog.Format(msgs.locale, "gatewayImportHint", nil)
@@ -4088,4 +4088,96 @@ func GatewayRestartNeeded() string { return In(i18n.Locale()).GatewayRestartNeed
 // in the language of msgs.
 func (msgs Messages) GatewayRestartNeeded() string {
 	return Catalog.Format(msgs.locale, "gatewayRestartNeeded", nil)
+}
+
+// GatewayImportSelect says "Detected servers"
+// in the language the app shows.
+func GatewayImportSelect() string { return In(i18n.Locale()).GatewayImportSelect() }
+
+// GatewayImportSelect says "Detected servers"
+// in the language of msgs.
+func (msgs Messages) GatewayImportSelect() string {
+	return Catalog.Format(msgs.locale, "gatewayImportSelect", nil)
+}
+
+// GatewayImportSelectAll says "Select all"
+// in the language the app shows.
+func GatewayImportSelectAll() string { return In(i18n.Locale()).GatewayImportSelectAll() }
+
+// GatewayImportSelectAll says "Select all"
+// in the language of msgs.
+func (msgs Messages) GatewayImportSelectAll() string {
+	return Catalog.Format(msgs.locale, "gatewayImportSelectAll", nil)
+}
+
+// GatewayImportSelectNone says "Select none"
+// in the language the app shows.
+func GatewayImportSelectNone() string { return In(i18n.Locale()).GatewayImportSelectNone() }
+
+// GatewayImportSelectNone says "Select none"
+// in the language of msgs.
+func (msgs Messages) GatewayImportSelectNone() string {
+	return Catalog.Format(msgs.locale, "gatewayImportSelectNone", nil)
+}
+
+// GatewayImportSelected says "{count} selected"
+// in the language the app shows.
+func GatewayImportSelected(count string) string {
+	return In(i18n.Locale()).GatewayImportSelected(count)
+}
+
+// GatewayImportSelected says "{count} selected"
+// in the language of msgs.
+func (msgs Messages) GatewayImportSelected(count string) string {
+	return Catalog.Format(msgs.locale, "gatewayImportSelected", map[string]any{"count": count})
+}
+
+// GatewayImportNew says "New"
+// in the language the app shows.
+func GatewayImportNew() string { return In(i18n.Locale()).GatewayImportNew() }
+
+// GatewayImportNew says "New"
+// in the language of msgs.
+func (msgs Messages) GatewayImportNew() string {
+	return Catalog.Format(msgs.locale, "gatewayImportNew", nil)
+}
+
+// GatewayImportExisting says "Registered"
+// in the language the app shows.
+func GatewayImportExisting() string { return In(i18n.Locale()).GatewayImportExisting() }
+
+// GatewayImportExisting says "Registered"
+// in the language of msgs.
+func (msgs Messages) GatewayImportExisting() string {
+	return Catalog.Format(msgs.locale, "gatewayImportExisting", nil)
+}
+
+// GatewayImportInvalid says "Invalid"
+// in the language the app shows.
+func GatewayImportInvalid() string { return In(i18n.Locale()).GatewayImportInvalid() }
+
+// GatewayImportInvalid says "Invalid"
+// in the language of msgs.
+func (msgs Messages) GatewayImportInvalid() string {
+	return Catalog.Format(msgs.locale, "gatewayImportInvalid", nil)
+}
+
+// GatewayImportNoSelection says "Select at least one server."
+// in the language the app shows.
+func GatewayImportNoSelection() string { return In(i18n.Locale()).GatewayImportNoSelection() }
+
+// GatewayImportNoSelection says "Select at least one server."
+// in the language of msgs.
+func (msgs Messages) GatewayImportNoSelection() string {
+	return Catalog.Format(msgs.locale, "gatewayImportNoSelection", nil)
+}
+
+// GatewayImportRescan says "Rescan"
+// in the language the app shows.
+func GatewayImportRescan() string { return In(i18n.Locale()).GatewayImportRescan() }
+
+// GatewayImportRescan says "Rescan"
+// in the language of msgs.
+func (msgs Messages) GatewayImportRescan() string {
+	return Catalog.Format(msgs.locale, "gatewayImportRescan", nil)
 }

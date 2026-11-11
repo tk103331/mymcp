@@ -341,7 +341,7 @@
   "clientsDetectedNo": "Not found",
   "gatewayImport": "Import",
   "gatewayImportTitle": "Import MCP Servers",
-  "gatewayImportHint": "Import servers from detected clients into the default profile. Entries managed by MyMCP are skipped.",
+  "gatewayImportHint": "Choose servers from detected clients and a profile to receive them. MyMCP-managed entries are skipped.",
   "gatewayImportDone": "Done",
   "gatewayImportSummary": "Imported {imported}, existing {existing}, duplicate {duplicate}, invalid {invalid}.",
   "gatewayImportEmpty": "Nothing new to import.",
@@ -488,5 +488,14 @@
   "catalogSubtitle": "Add MCP servers from the bundled catalog.",
   "gatewayReady": "Ready",
   "gatewayDisabled": "Disabled",
-  "gatewayRestartNeeded": "Restart required"
+  "gatewayRestartNeeded": "Restart required",
+  "gatewayImportSelect": "Detected servers",
+  "gatewayImportSelectAll": "Select all",
+  "gatewayImportSelectNone": "Select none",
+  "gatewayImportSelected": "{count} selected",
+  "gatewayImportNew": "New",
+  "gatewayImportExisting": "Registered",
+  "gatewayImportInvalid": "Invalid",
+  "gatewayImportNoSelection": "Select at least one server.",
+  "gatewayImportRescan": "Rescan"
 }

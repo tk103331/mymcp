@@ -30,6 +30,12 @@ type Stats struct {
 // Import reads one client or every client and adds new servers to profile.
 // dry stops before writing.
 func Import(ctx context.Context, db *store.DB, sync *configsync.Manager, profile, client string, dry bool) (*Stats, error) {
+	return ImportSelected(ctx, db, sync, profile, client, nil, dry)
+}
+
+// ImportSelected imports only the named servers, or every server when
+// selected is nil. dry stops before writing.
+func ImportSelected(ctx context.Context, db *store.DB, sync *configsync.Manager, profile, client string, selected map[string]bool, dry bool) (*Stats, error) {
 	if profile == "" {
 		profile = "default"
 	}
@@ -59,6 +65,9 @@ func Import(ctx context.Context, db *store.DB, sync *configsync.Manager, profile
 			continue
 		}
 		seen[incoming.Name] = true
+		if selected != nil && !selected[incoming.Name] {
+			continue
+		}
 		if existing, err := db.GetServer(ctx, incoming.Name); err == nil {
 			if !dry {
 				if err := db.AttachServer(ctx, profile, existing.Name, true); err != nil {
