@@ -26,3 +26,8 @@ go.work.sum
 
 bin
 build
+# MyGo development build
+.mygo
+
+# Generated mcp-pipe helpers bundled into desktop builds
+resources/*/bin/

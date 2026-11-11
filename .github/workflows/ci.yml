@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Test
+        run: go test ./...
+      - name: Vet
+        run: |
+          go vet ./...
+          go tool mygo vet
+      - name: Check localizations
+        run: go tool mygo i18n check
+      - name: Build
+        run: go build ./...
+      - name: Bundle mcp-pipe
+        run: ./scripts/bundle-mcp-pipe.sh
+      - name: Build desktop package
+        run: go tool mygo build -platform linux/amd64 -o dist
