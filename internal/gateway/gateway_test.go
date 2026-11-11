@@ -31,6 +31,26 @@ func TestGatewayAggregatesAndRecords(t *testing.T) {
 		text, _ := args["text"].(string)
 		return mcp.NewToolResultText(text), nil
 	})
+	upstream.AddPrompt(mcp.NewPrompt("greet",
+		mcp.WithPromptDescription("Greeting prompt"),
+		mcp.WithArgument("name", mcp.RequiredArgument()),
+	), func(ctx context.Context, request mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {
+		return mcp.NewGetPromptResult("Greeting", []mcp.PromptMessage{
+			mcp.NewPromptMessage(mcp.RoleUser, mcp.NewTextContent("hello")),
+		}), nil
+	})
+	upstream.AddResource(mcp.NewResource("file:///demo.txt", "Demo file",
+		mcp.WithResourceDescription("A demo resource"),
+		mcp.WithMIMEType("text/plain"),
+	), func(ctx context.Context, request mcp.ReadResourceRequest) ([]mcp.ResourceContents, error) {
+		return []mcp.ResourceContents{mcp.TextResourceContents{
+			URI: "file:///demo.txt", MIMEType: "text/plain", Text: "demo",
+		}}, nil
+	})
+	upstream.AddResourceTemplate(mcp.NewResourceTemplate("file:///{path}", "File"),
+		func(ctx context.Context, request mcp.ReadResourceRequest) ([]mcp.ResourceContents, error) {
+			return nil, nil
+		})
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -139,6 +159,26 @@ func TestGatewayAggregatesAndRecords(t *testing.T) {
 	}
 	if len(result.Content) != 1 {
 		t.Fatalf("restarted result = %+v", result)
+	}
+
+	detail, err := g.ServerDetail(ctx, "demo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !detail.ToolsSupported || len(detail.Tools) != 1 {
+		t.Fatalf("detail tools = %+v", detail)
+	}
+	if !detail.PromptsSupported || len(detail.Prompts) != 1 || detail.Prompts[0].Name != "greet" {
+		t.Fatalf("detail prompts = %+v", detail)
+	}
+	if !detail.ResourcesSupported || len(detail.Resources) != 1 || len(detail.ResourceTemplates) != 1 {
+		t.Fatalf("detail resources = %+v", detail)
+	}
+	if detail.Info.Name != "demo" || detail.Info.Version != "1.0.0" {
+		t.Fatalf("detail info = %+v", detail.Info)
+	}
+	if len(detail.Errors) != 0 {
+		t.Fatalf("detail errors = %+v", detail.Errors)
 	}
 
 	// The debug API exposes the same route and records its calls.

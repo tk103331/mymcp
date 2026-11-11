@@ -72,6 +72,15 @@ type app struct {
 	gwServerQuery    string
 	gwDirty          bool
 
+	gwDetailOpen    bool
+	gwDetail        *store.Server
+	gwDetailProfile string
+	gwDetailTab     int
+	gwDetailData    *gateway.ServerDetail
+	gwDetailError   string
+	gwDetailLoading bool
+	gwDetailSeq     int
+
 	gwAddOpen        bool
 	gwEditing        string
 	gwTab            int
@@ -526,6 +535,16 @@ func (a *app) applyTheme() {
 	default:
 		mygo.Theme.SetSource(mygo.ThemeSystem)
 	}
+}
+
+// queueLocale applies the locale after the frame that changed it, so
+// SetLocale may redraw the window without rebuilding the current frame.
+func (a *app) queueLocale() {
+	if a.win == nil {
+		a.applyLocale()
+		return
+	}
+	a.win.Update(a.applyLocale)
 }
 
 func (a *app) applyLocale() {

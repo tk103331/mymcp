@@ -206,7 +206,7 @@ func (a *app) gatewayServers(c *ui.Context, t *ui.Theme, msgs locales.Messages) 
 			{Title: msgs.GatewayProfiles(), Width: 150},
 			{Title: msgs.GatewayEnabled(), Width: 65},
 			{Title: msgs.ServiceStatus(), Width: 100},
-			{Title: msgs.ServiceActions(), Width: 80, Fixed: true},
+			{Title: msgs.ServiceActions(), Width: 150, Fixed: true},
 		}
 		ui.Table(c, nil, columns, len(rows), func(row, col int) {
 			server := rows[row]
@@ -246,6 +246,9 @@ func (a *app) gatewayServers(c *ui.Context, t *ui.Theme, msgs locales.Messages) 
 				}
 			case 5:
 				ui.Row(c).Gap(4).Children(func() {
+					if ui.Button(c, msgs.Details()).FontSize(11).Padding(3, 8).Clicked() {
+						a.openServerDetail(server, msgs)
+					}
 					if ui.Button(c, "").Label(msgs.Edit()).Tooltip(msgs.Edit()).
 						Padding(4, 7).Children(func() { ui.Icon(c, iconEdit).Size(12, 12) }).Clicked() {
 						a.openEditServerDialog(server, c)
@@ -643,7 +646,11 @@ func (a *app) saveServer(c *ui.Context, msgs locales.Messages) {
 		a.gwError = msgs.GatewayHeaders() + ": " + err.Error()
 		return
 	}
-	server.Env, server.Headers = env, headers
+	if transport == "stdio" {
+		server.Env, server.Headers = env, nil
+	} else {
+		server.Env, server.Headers = nil, headers
+	}
 	if transport == "stdio" {
 		server.Command = strings.TrimSpace(a.gwCommand)
 		args, err := splitArgs(a.gwArgs)
@@ -897,6 +904,7 @@ func (a *app) gatewayDialogs(c *ui.Context, t *ui.Theme, msgs locales.Messages) 
 	a.revokeKeyDialog(c, t, msgs)
 	a.importDialog(c, t, msgs)
 	a.profileDialog(c, t, msgs)
+	a.serverDetailDialog(c, t, msgs)
 }
 
 func (a *app) addServerDialog(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
@@ -942,12 +950,15 @@ func (a *app) addServerDialog(c *ui.Context, t *ui.Theme, msgs locales.Messages)
 					})
 				}
 			case 1:
-				ui.Field(c, msgs.GatewayEnvironment(), func() {
-					ui.TextArea(c, &a.gwEnvText).Height(120).Placeholder(msgs.GatewayEnvPlaceholder())
-				})
-				ui.Field(c, msgs.GatewayHeaders(), func() {
-					ui.TextArea(c, &a.gwHeadersText).Height(120).Placeholder(msgs.GatewayHeadersPlaceholder())
-				})
+				if a.gwTransport == "stdio" {
+					ui.Field(c, msgs.GatewayEnvironment(), func() {
+						ui.TextArea(c, &a.gwEnvText).Height(120).Placeholder(msgs.GatewayEnvPlaceholder())
+					}).Description(msgs.GatewayEnvHint())
+				} else {
+					ui.Field(c, msgs.GatewayHeaders(), func() {
+						ui.TextArea(c, &a.gwHeadersText).Height(120).Placeholder(msgs.GatewayHeadersPlaceholder())
+					}).Description(msgs.GatewayHeadersHint())
+				}
 			case 2:
 				ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
 					ui.Switch(c, &a.gwOAuth).Label(msgs.GatewayOAuth())

@@ -12,6 +12,7 @@ import (
 	"github.com/tk103331/mymcp/internal/model"
 	"github.com/tk103331/mymcp/internal/secrets"
 	"github.com/tk103331/mymcp/internal/store"
+	"github.com/tk103331/mymcp/locales"
 )
 
 func newTestApp() *app {
@@ -304,6 +305,52 @@ func TestDebugPage(t *testing.T) {
 	for _, text := range []string{"MCP 调试", "echo", "demo", "参数结构", "调用工具"} {
 		if !tt.HasText(text) {
 			t.Fatalf("debug page is missing %q: %q", text, tt.Texts())
+		}
+	}
+}
+
+func TestLanguageChoices(t *testing.T) {
+	zh := locales.In("zh-Hans")
+	en := locales.In("en")
+	for _, tc := range []struct {
+		label string
+		msgs  locales.Messages
+		want  string
+	}{
+		{"简体中文", zh, "zh"},
+		{"English", zh, "en"},
+		{"跟随系统", zh, "system"},
+		{"English", en, "en"},
+		{"简体中文", en, "zh"},
+		{"System", en, "system"},
+		{"", en, "system"},
+	} {
+		if got := (&app{}).languageTag(tc.label, tc.msgs); got != tc.want {
+			t.Errorf("languageTag(%q) = %q, want %q", tc.label, got, tc.want)
+		}
+	}
+	if got := (&app{}).languageLabel("en", zh); got != zh.English() {
+		t.Errorf("languageLabel(en) = %q", got)
+	}
+}
+
+func TestSettingsLanguages(t *testing.T) {
+	a := newTestApp()
+	a.router.Transition = ui.TransitionNone
+	a.router.Push("/settings")
+	tt := ui.NewTester(a.view, 1000, 800)
+	tt.SetLocale("en")
+	tt.Frame()
+	for _, text := range []string{"Appearance", "Language", "English"} {
+		if !tt.HasText(text) {
+			t.Errorf("English settings page is missing %q", text)
+		}
+	}
+	tt.SetLocale("zh-Hans")
+	tt.Frame()
+	for _, text := range []string{"外观", "语言", "English"} {
+		if !tt.HasText(text) {
+			t.Errorf("Chinese settings page is missing %q", text)
 		}
 	}
 }

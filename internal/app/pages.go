@@ -576,9 +576,11 @@ func (a *app) settingsPage(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
 					Background(t.Background.Alpha(0.45)).Children(func() {
 					ui.Form(c, func() {
 						ui.Field(c, msgs.Language(), func() {
-							ui.Select(c, &a.languageChoice, []string{
+							if ui.Select(c, &a.languageChoice, []string{
 								msgs.FollowSystem(), msgs.Chinese(), msgs.English(),
-							}).Width(260)
+							}).Width(260).Changed() {
+								a.applyLanguageChoice(msgs)
+							}
 						})
 						ui.Field(c, msgs.Theme(), func() {
 							if ui.Select(c, &a.themeChoice, []string{
@@ -664,8 +666,14 @@ func (a *app) settingsPage(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
 }
 
 func (a *app) saveSettings(c *ui.Context, msgs locales.Messages) {
-	language := a.languageTag(a.languageChoice, msgs)
-	theme := a.themeTag(a.themeChoice, msgs)
+	language := a.settings.Language
+	if a.languageChoice != "" {
+		language = a.languageTag(a.languageChoice, msgs)
+	}
+	theme := a.settings.Theme
+	if a.themeChoice != "" {
+		theme = a.themeTag(a.themeChoice, msgs)
+	}
 	gatewayAddr, err := normalizeGatewayAddr(a.settings.GatewayAddr)
 	if err != nil {
 		a.settingsError = msgs.GatewayAddressInvalid()
@@ -689,7 +697,7 @@ func (a *app) saveSettings(c *ui.Context, msgs locales.Messages) {
 		return
 	}
 	a.queueTheme()
-	a.applyLocale()
+	a.queueLocale()
 	a.languageChoice, a.themeChoice = "", ""
 	if a.settings.GatewayAddr != oldGatewayAddr {
 		wasRunning := a.gwRunning
@@ -705,6 +713,23 @@ func (a *app) saveSettings(c *ui.Context, msgs locales.Messages) {
 		}
 	}
 	c.Toast(msgs.SettingsSaved())
+}
+
+// applyLanguageChoice switches the UI language as soon as the select
+// changes, then records it. The Save button still covers the gateway address.
+func (a *app) applyLanguageChoice(msgs locales.Messages) {
+	language := a.languageTag(a.languageChoice, msgs)
+	if language == a.settings.Language {
+		return
+	}
+	a.settings.Language = language
+	if err := data.SaveSettings(&a.settings); err != nil {
+		a.settingsError = err.Error()
+		return
+	}
+	a.settingsError = ""
+	a.queueLocale()
+	a.languageChoice = ""
 }
 
 func (a *app) initSettingsChoices(msgs locales.Messages) {

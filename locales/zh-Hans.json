@@ -327,7 +327,7 @@
   "secretsEmptyHint": "保存 API Key 或 Token，然后在服务器配置中使用 secret://名称 引用。",
   "secretsName": "名称",
   "secretsValue": "值",
-  "secretsValueHint": "值会加密保存，保存后不再显示。",
+  "secretsValueHint": "值可以包含多行；保存后加密存储且不再显示。",
   "secretsSave": "保存",
   "secretsSaved": "密钥已保存",
   "secretsDeleteTitle": "删除密钥？",
@@ -420,5 +420,17 @@
   "pluginsBuiltinSection": "内置适配器",
   "pluginsBuiltinHint": "随应用内置的 JavaScript 插件，启动时自动加载。",
   "pluginsBuiltinBadge": "内置",
-  "pluginsPreviewOnly": "仅预览"
+  "pluginsPreviewOnly": "仅预览",
+  "gatewayEnvHint": "仅用于 STDIO 类型服务器。",
+  "gatewayHeadersHint": "仅用于 HTTP 和 SSE 类型服务器。",
+  "serverDetailOffline": "启动网关后可查看实时能力。",
+  "serverDetailLoading": "正在加载服务器能力…",
+  "serverCapabilities": "能力",
+  "serverPrompts": "提示词",
+  "serverResources": "资源",
+  "serverResourceTemplates": "资源模板",
+  "serverNoTools": "该服务器没有工具。",
+  "serverNoPrompts": "该服务器没有提示词。",
+  "serverNoResources": "该服务器没有资源。",
+  "serverUnsupported": "该服务器不支持此能力。"
 }

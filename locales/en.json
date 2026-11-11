@@ -411,7 +411,7 @@
   "secretsEmptyHint": "Store an API key or token, then reference it as secret://name.",
   "secretsName": "Name",
   "secretsValue": "Value",
-  "secretsValueHint": "The value is encrypted at rest and never shown again.",
+  "secretsValueHint": "The value may span multiple lines. It is encrypted at rest and never shown again.",
   "secretsSave": "Save",
   "secretsSaved": "Secret saved",
   "secretsDeleteTitle": "Delete secret?",
@@ -504,5 +504,17 @@
   "pluginsBuiltinSection": "Built-in adapters",
   "pluginsBuiltinHint": "Shipped as JavaScript plugins and loaded on every start.",
   "pluginsBuiltinBadge": "Built-in",
-  "pluginsPreviewOnly": "Preview only"
+  "pluginsPreviewOnly": "Preview only",
+  "gatewayEnvHint": "Used by STDIO servers.",
+  "gatewayHeadersHint": "Used by HTTP and SSE servers.",
+  "serverDetailOffline": "Start the gateway to inspect live capabilities.",
+  "serverDetailLoading": "Loading server capabilities…",
+  "serverCapabilities": "Capabilities",
+  "serverPrompts": "Prompts",
+  "serverResources": "Resources",
+  "serverResourceTemplates": "Resource templates",
+  "serverNoTools": "This server exposes no tools.",
+  "serverNoPrompts": "This server exposes no prompts.",
+  "serverNoResources": "This server exposes no resources.",
+  "serverUnsupported": "This server does not support this capability."
 }

@@ -88,6 +88,15 @@ func (m *Manager) Tools(profile string) ([]ToolInfo, error) {
 	return g.Tools(), nil
 }
 
+// ServerDetail returns one upstream server's live capabilities.
+func (m *Manager) ServerDetail(ctx context.Context, profile, server string) (*ServerDetail, error) {
+	g, ok := m.gateways[profile]
+	if !ok {
+		return nil, fmt.Errorf("profile %q not found", profile)
+	}
+	return g.ServerDetail(ctx, server)
+}
+
 // CallTool invokes a tool in one profile and records the call.
 func (m *Manager) CallTool(ctx context.Context, profile, name string, args map[string]any) (*mcp.CallToolResult, error) {
 	g, ok := m.gateways[profile]

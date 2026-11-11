@@ -58,3 +58,21 @@ func TestVaultRoundTrip(t *testing.T) {
 		t.Fatal("deleted secret is still there")
 	}
 }
+
+func TestMultilineValue(t *testing.T) {
+	store, err := Open(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	value := "-----BEGIN KEY-----\nline one\nline two\n-----END KEY-----"
+	if err := store.Set("pem", value); err != nil {
+		t.Fatal(err)
+	}
+	got, err := store.Get("pem")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != value {
+		t.Fatalf("got %q, want %q", got, value)
+	}
+}

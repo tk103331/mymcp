@@ -63,13 +63,15 @@ type Gateway struct {
 }
 
 type upstream struct {
-	mu       sync.Mutex
-	server   *store.Server
-	client   client.MCPClient
-	info     mcp.Implementation
-	tools    []mcp.Tool
-	lastUsed time.Time
-	inFlight int
+	mu           sync.Mutex
+	server       *store.Server
+	client       client.MCPClient
+	info         mcp.Implementation
+	capabilities mcp.ServerCapabilities
+	instructions string
+	tools        []mcp.Tool
+	lastUsed     time.Time
+	inFlight     int
 }
 
 type route struct {
@@ -85,6 +87,94 @@ type ToolInfo struct {
 	Tool        string          `json:"tool"`
 	Description string          `json:"description,omitempty"`
 	InputSchema json.RawMessage `json:"inputSchema,omitempty"`
+}
+
+// ServerDetail is one upstream server's live capabilities. Lists that the
+// server does not advertise are left empty and their Supported flag false.
+type ServerDetail struct {
+	Server             string                 `json:"server"`
+	Profile            string                 `json:"profile"`
+	Info               mcp.Implementation     `json:"info"`
+	Instructions       string                 `json:"instructions,omitempty"`
+	ToolsSupported     bool                   `json:"toolsSupported"`
+	PromptsSupported   bool                   `json:"promptsSupported"`
+	ResourcesSupported bool                   `json:"resourcesSupported"`
+	Tools              []mcp.Tool             `json:"tools,omitempty"`
+	Prompts            []mcp.Prompt           `json:"prompts,omitempty"`
+	Resources          []mcp.Resource         `json:"resources,omitempty"`
+	ResourceTemplates  []mcp.ResourceTemplate `json:"resourceTemplates,omitempty"`
+	Errors             map[string]string      `json:"errors,omitempty"`
+}
+
+// ServerDetail starts the upstream when needed and returns its tools,
+// prompts, resources and resource templates.
+func (g *Gateway) ServerDetail(ctx context.Context, server string) (*ServerDetail, error) {
+	up := g.upstreams[server]
+	if up == nil {
+		return nil, fmt.Errorf("server %q not found in profile %q", server, g.profile)
+	}
+	up.mu.Lock()
+	if up.client == nil {
+		if err := g.open(up); err != nil {
+			up.mu.Unlock()
+			return nil, err
+		}
+	}
+	up.inFlight++
+	up.lastUsed = time.Now()
+	client := up.client
+	info := up.info
+	caps := up.capabilities
+	instructions := up.instructions
+	tools := append([]mcp.Tool(nil), up.tools...)
+	up.mu.Unlock()
+	defer func() {
+		up.mu.Lock()
+		up.inFlight--
+		up.mu.Unlock()
+	}()
+	detail := &ServerDetail{
+		Server: server, Profile: g.profile, Info: info, Instructions: instructions,
+		Tools: tools, ToolsSupported: caps.Tools != nil || len(tools) > 0,
+		PromptsSupported: caps.Prompts != nil, ResourcesSupported: caps.Resources != nil,
+	}
+	if caps.Prompts != nil {
+		callCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		result, err := client.ListPrompts(callCtx, mcp.ListPromptsRequest{})
+		cancel()
+		if err != nil {
+			detail.Errors = addDetailError(detail.Errors, "prompts", err)
+		} else if result != nil {
+			detail.Prompts = result.Prompts
+		}
+	}
+	if caps.Resources != nil {
+		callCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		result, err := client.ListResources(callCtx, mcp.ListResourcesRequest{})
+		cancel()
+		if err != nil {
+			detail.Errors = addDetailError(detail.Errors, "resources", err)
+		} else if result != nil {
+			detail.Resources = result.Resources
+		}
+		callCtx, cancel = context.WithTimeout(ctx, 10*time.Second)
+		templates, err := client.ListResourceTemplates(callCtx, mcp.ListResourceTemplatesRequest{})
+		cancel()
+		if err != nil {
+			detail.Errors = addDetailError(detail.Errors, "resourceTemplates", err)
+		} else if templates != nil {
+			detail.ResourceTemplates = templates.ResourceTemplates
+		}
+	}
+	return detail, nil
+}
+
+func addDetailError(errors map[string]string, key string, err error) map[string]string {
+	if errors == nil {
+		errors = map[string]string{}
+	}
+	errors[key] = err.Error()
+	return errors
 }
 
 // New starts every enabled server of the profile, discovers its tools and
@@ -219,6 +309,7 @@ func (g *Gateway) open(up *upstream) error {
 		return err
 	}
 	up.client, up.info, up.lastUsed = mcpClient, result.ServerInfo, time.Now()
+	up.capabilities, up.instructions = result.Capabilities, result.Instructions
 	g.mu.Lock()
 	delete(g.errors, cfg.Name)
 	g.mu.Unlock()

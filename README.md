@@ -146,7 +146,8 @@ The desktop app has:
 - **Overview** — gateway health, endpoint, server/tool/client counts, recent
   calls and quick actions.
 - **Servers** — add, import, edit, enable/disable and delete upstream servers;
-  see their profiles and startup errors.
+  open a server to inspect its config, environment variables (STDIO) or
+  headers (HTTP/SSE), tools, prompts and resources.
 - **Profiles** — create profiles, attach servers, copy profile endpoints, and
   manage client keys.
 - **Catalog** — add a server from the bundled catalog into a profile.
@@ -154,8 +155,8 @@ The desktop app has:
   them through the running gateway, and see the response and latency.
 - **Clients** — detect installed clients, preview and apply the router entry,
   or detach it. Entries changed after MyMCP wrote them are marked.
-- **Secrets** — store encrypted API keys and tokens referenced as
-  `secret://name`.
+- **Secrets** — store encrypted API keys and tokens, including multi-line
+  values such as certificates, referenced as `secret://name`.
 - **Plugins** — inspect the built-in JavaScript adapters and install, reload or
   remove additional client adapters.
 - **Usage** — calls, errors, latency and recent activity from the same SQLite

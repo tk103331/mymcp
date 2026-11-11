@@ -156,7 +156,7 @@ func (a *app) secretDialogs(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
 				}
 			}).Description(msgs.SecretsNameHint())
 			ui.Field(c, msgs.SecretsValue(), func() {
-				input := ui.TextInput(c, &a.secretValue).Password()
+				input := ui.TextArea(c, &a.secretValue).Height(140)
 				if a.secretEditing != "" {
 					input.AutoFocus()
 				}

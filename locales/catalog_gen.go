@@ -3310,11 +3310,11 @@ func (msgs Messages) SecretsValue() string {
 	return Catalog.Format(msgs.locale, "secretsValue", nil)
 }
 
-// SecretsValueHint says "The value is encrypted at rest and never shown again."
+// SecretsValueHint says "The value may span multiple lines. It is encrypted at rest and never shown again."
 // in the language the app shows.
 func SecretsValueHint() string { return In(i18n.Locale()).SecretsValueHint() }
 
-// SecretsValueHint says "The value is encrypted at rest and never shown again."
+// SecretsValueHint says "The value may span multiple lines. It is encrypted at rest and never shown again."
 // in the language of msgs.
 func (msgs Messages) SecretsValueHint() string {
 	return Catalog.Format(msgs.locale, "secretsValueHint", nil)
@@ -4250,4 +4250,124 @@ func PluginsPreviewOnly() string { return In(i18n.Locale()).PluginsPreviewOnly()
 // in the language of msgs.
 func (msgs Messages) PluginsPreviewOnly() string {
 	return Catalog.Format(msgs.locale, "pluginsPreviewOnly", nil)
+}
+
+// GatewayEnvHint says "Used by STDIO servers."
+// in the language the app shows.
+func GatewayEnvHint() string { return In(i18n.Locale()).GatewayEnvHint() }
+
+// GatewayEnvHint says "Used by STDIO servers."
+// in the language of msgs.
+func (msgs Messages) GatewayEnvHint() string {
+	return Catalog.Format(msgs.locale, "gatewayEnvHint", nil)
+}
+
+// GatewayHeadersHint says "Used by HTTP and SSE servers."
+// in the language the app shows.
+func GatewayHeadersHint() string { return In(i18n.Locale()).GatewayHeadersHint() }
+
+// GatewayHeadersHint says "Used by HTTP and SSE servers."
+// in the language of msgs.
+func (msgs Messages) GatewayHeadersHint() string {
+	return Catalog.Format(msgs.locale, "gatewayHeadersHint", nil)
+}
+
+// ServerDetailOffline says "Start the gateway to inspect live capabilities."
+// in the language the app shows.
+func ServerDetailOffline() string { return In(i18n.Locale()).ServerDetailOffline() }
+
+// ServerDetailOffline says "Start the gateway to inspect live capabilities."
+// in the language of msgs.
+func (msgs Messages) ServerDetailOffline() string {
+	return Catalog.Format(msgs.locale, "serverDetailOffline", nil)
+}
+
+// ServerDetailLoading says "Loading server capabilities…"
+// in the language the app shows.
+func ServerDetailLoading() string { return In(i18n.Locale()).ServerDetailLoading() }
+
+// ServerDetailLoading says "Loading server capabilities…"
+// in the language of msgs.
+func (msgs Messages) ServerDetailLoading() string {
+	return Catalog.Format(msgs.locale, "serverDetailLoading", nil)
+}
+
+// ServerCapabilities says "Capabilities"
+// in the language the app shows.
+func ServerCapabilities() string { return In(i18n.Locale()).ServerCapabilities() }
+
+// ServerCapabilities says "Capabilities"
+// in the language of msgs.
+func (msgs Messages) ServerCapabilities() string {
+	return Catalog.Format(msgs.locale, "serverCapabilities", nil)
+}
+
+// ServerPrompts says "Prompts"
+// in the language the app shows.
+func ServerPrompts() string { return In(i18n.Locale()).ServerPrompts() }
+
+// ServerPrompts says "Prompts"
+// in the language of msgs.
+func (msgs Messages) ServerPrompts() string {
+	return Catalog.Format(msgs.locale, "serverPrompts", nil)
+}
+
+// ServerResources says "Resources"
+// in the language the app shows.
+func ServerResources() string { return In(i18n.Locale()).ServerResources() }
+
+// ServerResources says "Resources"
+// in the language of msgs.
+func (msgs Messages) ServerResources() string {
+	return Catalog.Format(msgs.locale, "serverResources", nil)
+}
+
+// ServerResourceTemplates says "Resource templates"
+// in the language the app shows.
+func ServerResourceTemplates() string { return In(i18n.Locale()).ServerResourceTemplates() }
+
+// ServerResourceTemplates says "Resource templates"
+// in the language of msgs.
+func (msgs Messages) ServerResourceTemplates() string {
+	return Catalog.Format(msgs.locale, "serverResourceTemplates", nil)
+}
+
+// ServerNoTools says "This server exposes no tools."
+// in the language the app shows.
+func ServerNoTools() string { return In(i18n.Locale()).ServerNoTools() }
+
+// ServerNoTools says "This server exposes no tools."
+// in the language of msgs.
+func (msgs Messages) ServerNoTools() string {
+	return Catalog.Format(msgs.locale, "serverNoTools", nil)
+}
+
+// ServerNoPrompts says "This server exposes no prompts."
+// in the language the app shows.
+func ServerNoPrompts() string { return In(i18n.Locale()).ServerNoPrompts() }
+
+// ServerNoPrompts says "This server exposes no prompts."
+// in the language of msgs.
+func (msgs Messages) ServerNoPrompts() string {
+	return Catalog.Format(msgs.locale, "serverNoPrompts", nil)
+}
+
+// ServerNoResources says "This server exposes no resources."
+// in the language the app shows.
+func ServerNoResources() string { return In(i18n.Locale()).ServerNoResources() }
+
+// ServerNoResources says "This server exposes no resources."
+// in the language of msgs.
+func (msgs Messages) ServerNoResources() string {
+	return Catalog.Format(msgs.locale, "serverNoResources", nil)
+}
+
+// ServerUnsupported says "This server does not support this capability."
+// in the language the app shows.
+func ServerUnsupported() string { return In(i18n.Locale()).ServerUnsupported() }
+
+// ServerUnsupported says "This server does not support this capability."
+// in the language of msgs.
+func (msgs Messages) ServerUnsupported() string {
+	return Catalog.Format(msgs.locale, "serverUnsupported", nil)
 }
