@@ -5,14 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"os"
-	"path/filepath"
-	"runtime"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
-	toml "github.com/pelletier/go-toml/v2"
+	"github.com/tk103331/mymcp/internal/agent"
+	"github.com/tk103331/mymcp/internal/configsync"
 	"github.com/tk103331/mymcp/internal/data"
+	"github.com/tk103331/mymcp/internal/plugin"
 )
 
 //go:embed assets/clients/*.png assets/clients/magpie/*.svg assets/clients/magpie/*.png
@@ -28,14 +27,11 @@ var (
 	clientBitmaps = map[string]*ui.Bitmap{}
 )
 
-var iconOnlyClients = []string{"goose"}
-
 func loadClientIcons() {
-	names := make([]string, 0, len(supportedClients)+len(iconOnlyClients))
+	names := make([]string, 0, len(supportedClients))
 	for _, client := range supportedClients {
 		names = append(names, client.Name)
 	}
-	names = append(names, iconOnlyClients...)
 	for _, name := range names {
 		if raw, err := clientIconFS.ReadFile("assets/clients/magpie/" + name + ".svg"); err == nil {
 			svg, err := ui.ParseSVG(raw)
@@ -63,373 +59,47 @@ func loadClientIcons() {
 	}
 }
 
+// registerClientIcon decodes a plugin-supplied icon under key.
+func registerClientIcon(key string, raw []byte, name string) {
+	if strings.HasSuffix(strings.ToLower(name), ".svg") {
+		if svg, err := ui.ParseSVG(raw); err == nil {
+			clientSVGs[key] = svg
+		}
+		return
+	}
+	if bitmap, err := ui.DecodeBitmap(raw); err == nil {
+		clientBitmaps[key] = bitmap
+	}
+}
+
 // SVG returns the client's vector brand icon, or nil when it has none.
 func (c *clientDef) SVG() *ui.SVG { return clientSVGs[c.Name] }
 
 // Icon returns the client's bitmap brand icon, or nil when it has none.
 func (c *clientDef) Icon() *ui.Bitmap { return clientBitmaps[c.Name] }
 
-// clientDef is an MCP client whose configuration the app can manage.
+// clientDef is one built-in adapter shown by the legacy workspace pages.
+// The actual client support lives in internal/agent's embedded plugins.
 type clientDef struct {
-	Name           string
-	Label          string
-	ConfigFile     map[string]string // GOOS -> path
-	ConfigProperty string
-	Generate       func(instances []*data.ServerInstance) map[string]any
-	// Preview overrides the JSON form the dialog shows (Codex's TOML).
-	Preview func(instances []*data.ServerInstance) string
-	// Write overrides the JSON merge that saves the client's file.
-	Write func(path string, instances []*data.ServerInstance) error
+	Name  string
+	Label string
+	agent *agent.Agent
 }
 
-// supportedClients draws the file and entry shapes from Magpie's MCP layer
-// (github.com/yetone/magpie/internal/library, targets.go and mcp.go):
-// fmtCursor, fmtClaude, fmtDesktop, fmtCodex, fmtGemini, fmtOpenCode,
-// fmtCopilot, fmtCline, fmtKiro, fmtOmp (Qoder) and fmtCrush. Claude
-// Desktop, Codex and Kiro take commands or HTTP only, so a remote endpoint is
-// bridged through mcp-pipe there. Windsurf, Trae, VS Code, LM Studio, Factory
-// Droid, ChatWise, CherryStudio and DeepChat are not in Magpie's MCP layer;
-// their vendor formats are kept.
-var supportedClients = []*clientDef{
-	{
-		Name:           "cursor",
-		Label:          "Cursor",
-		ConfigFile:     map[string]string{"darwin": "~/.cursor/mcp.json", "linux": "~/.cursor/mcp.json", "windows": "~/.cursor/mcp.json"},
-		ConfigProperty: "mcpServers",
-		Generate: func(instances []*data.ServerInstance) map[string]any {
-			return serversBy(instances, func(instance *data.ServerInstance) map[string]any {
-				return map[string]any{"url": instance.Endpoint}
-			})
-		},
-	},
-	{
-		Name:           "windsurf",
-		Label:          "Windsurf",
-		ConfigFile:     map[string]string{"darwin": "~/.codeium/windsurf/mcp_config.json", "linux": "~/.codeium/windsurf/mcp_config.json", "windows": "~/.codeium/windsurf/mcp_config.json"},
-		ConfigProperty: "mcpServers",
-		Generate: func(instances []*data.ServerInstance) map[string]any {
-			return serversBy(instances, func(instance *data.ServerInstance) map[string]any {
-				return map[string]any{"serverUrl": instance.Endpoint}
-			})
-		},
-	},
-	{
-		Name:           "trae",
-		Label:          "Trae",
-		ConfigFile:     map[string]string{"darwin": "~/Library/Application Support/Trae/User/mcp.json", "linux": "~/.config/Trae/User/mcp.json", "windows": `%APPDATA%\Trae\User\mcp.json`},
-		ConfigProperty: "mcpServers",
-		Generate: func(instances []*data.ServerInstance) map[string]any {
-			return serversBy(instances, func(instance *data.ServerInstance) map[string]any {
-				return map[string]any{"url": instance.Endpoint}
-			})
-		},
-	},
-	{
-		Name:           "claudecode",
-		Label:          "Claude Code",
-		ConfigFile:     map[string]string{"darwin": "~/.claude.json", "linux": "~/.claude.json", "windows": "~/.claude.json"},
-		ConfigProperty: "mcpServers",
-		Generate: func(instances []*data.ServerInstance) map[string]any {
-			return serversBy(instances, func(instance *data.ServerInstance) map[string]any {
-				return map[string]any{"type": "sse", "url": instance.Endpoint}
-			})
-		},
-	},
-	{
-		Name:           "claude",
-		Label:          "Claude Desktop",
-		ConfigFile:     map[string]string{"darwin": "~/Library/Application Support/Claude/claude_desktop_config.json", "linux": "~/.config/Claude/claude_desktop_config.json", "windows": `%APPDATA%\Claude\claude_desktop_config.json`},
-		ConfigProperty: "mcpServers",
-		Generate: func(instances []*data.ServerInstance) map[string]any {
-			return serversBy(instances, stdioBridgeEntry)
-		},
-	},
-	{
-		Name:           "codex",
-		Label:          "Codex",
-		ConfigFile:     map[string]string{"darwin": "~/.codex/config.toml", "linux": "~/.codex/config.toml", "windows": "~/.codex/config.toml"},
-		ConfigProperty: "mcp_servers",
-		Generate:       codexEntries,
-		Preview:        codexPreview,
-		Write:          writeCodexConfig,
-	},
-	{
-		Name:           "gemini",
-		Label:          "Gemini CLI",
-		ConfigFile:     map[string]string{"darwin": "~/.gemini/settings.json", "linux": "~/.gemini/settings.json", "windows": "~/.gemini/settings.json"},
-		ConfigProperty: "mcpServers",
-		Generate: func(instances []*data.ServerInstance) map[string]any {
-			return serversBy(instances, func(instance *data.ServerInstance) map[string]any {
-				return map[string]any{"url": instance.Endpoint}
-			})
-		},
-	},
-	{
-		Name:           "opencode",
-		Label:          "OpenCode",
-		ConfigFile:     map[string]string{"darwin": "~/.config/opencode/opencode.json", "linux": "~/.config/opencode/opencode.json", "windows": "~/.config/opencode/opencode.json"},
-		ConfigProperty: "mcp",
-		Generate: func(instances []*data.ServerInstance) map[string]any {
-			return serversBy(instances, func(instance *data.ServerInstance) map[string]any {
-				return map[string]any{"type": "remote", "url": instance.Endpoint, "enabled": true}
-			}, "mcp")
-		},
-	},
-	{
-		Name:           "copilot",
-		Label:          "GitHub Copilot",
-		ConfigFile:     map[string]string{"darwin": "~/.copilot/mcp-config.json", "linux": "~/.copilot/mcp-config.json", "windows": "~/.copilot/mcp-config.json"},
-		ConfigProperty: "mcpServers",
-		Generate: func(instances []*data.ServerInstance) map[string]any {
-			return serversBy(instances, func(instance *data.ServerInstance) map[string]any {
-				return map[string]any{"type": "sse", "url": instance.Endpoint}
-			})
-		},
-	},
-	{
-		Name:           "cline",
-		Label:          "Cline",
-		ConfigFile:     map[string]string{"darwin": "~/Library/Application Support/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json", "linux": "~/.config/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json", "windows": `%APPDATA%\Code\User\globalStorage\saoudrizwan.claude-dev\settings\cline_mcp_settings.json`},
-		ConfigProperty: "mcpServers",
-		Generate: func(instances []*data.ServerInstance) map[string]any {
-			return serversBy(instances, func(instance *data.ServerInstance) map[string]any {
-				return map[string]any{"transport": map[string]any{"type": "sse", "url": instance.Endpoint}}
-			})
-		},
-	},
-	{
-		Name:           "kiro",
-		Label:          "Kiro",
-		ConfigFile:     map[string]string{"darwin": "~/.kiro/settings/mcp.json", "linux": "~/.kiro/settings/mcp.json", "windows": "~/.kiro/settings/mcp.json"},
-		ConfigProperty: "mcpServers",
-		Generate: func(instances []*data.ServerInstance) map[string]any {
-			return serversBy(instances, stdioBridgeEntry)
-		},
-	},
-	{
-		Name:           "qoder",
-		Label:          "Qoder",
-		ConfigFile:     map[string]string{"darwin": "~/.qoder/settings.json", "linux": "~/.qoder/settings.json", "windows": "~/.qoder/settings.json"},
-		ConfigProperty: "mcpServers",
-		Generate: func(instances []*data.ServerInstance) map[string]any {
-			return serversBy(instances, func(instance *data.ServerInstance) map[string]any {
-				return map[string]any{"type": "sse", "url": instance.Endpoint}
-			})
-		},
-	},
-	{
-		Name:           "crush",
-		Label:          "Crush",
-		ConfigFile:     map[string]string{"darwin": "~/.config/crush/crush.json", "linux": "~/.config/crush/crush.json", "windows": `%LOCALAPPDATA%\crush\crush.json`},
-		ConfigProperty: "mcp",
-		Generate: func(instances []*data.ServerInstance) map[string]any {
-			return serversBy(instances, func(instance *data.ServerInstance) map[string]any {
-				return map[string]any{"type": "sse", "url": instance.Endpoint}
-			}, "mcp")
-		},
-	},
-	{
-		Name:           "vscode",
-		Label:          "VS Code",
-		ConfigFile:     map[string]string{"darwin": "~/Library/Application Support/Code/User/mcp.json", "linux": "~/.config/Code/User/mcp.json", "windows": `%APPDATA%\Code\User\mcp.json`},
-		ConfigProperty: "servers",
-		Generate: func(instances []*data.ServerInstance) map[string]any {
-			return serversBy(instances, func(instance *data.ServerInstance) map[string]any {
-				return map[string]any{"type": "sse", "url": instance.Endpoint}
-			}, "servers")
-		},
-	},
-	{
-		Name:           "lmstudio",
-		Label:          "LM Studio",
-		ConfigFile:     map[string]string{"darwin": "~/.lmstudio/mcp.json", "linux": "~/.lmstudio/mcp.json", "windows": "~/.lmstudio/mcp.json"},
-		ConfigProperty: "mcpServers",
-		Generate: func(instances []*data.ServerInstance) map[string]any {
-			return serversBy(instances, func(instance *data.ServerInstance) map[string]any {
-				return map[string]any{"url": instance.Endpoint}
-			})
-		},
-	},
-	{
-		Name:           "droid",
-		Label:          "Factory Droid",
-		ConfigFile:     map[string]string{"darwin": "~/.factory/mcp.json", "linux": "~/.factory/mcp.json", "windows": "~/.factory/mcp.json"},
-		ConfigProperty: "mcpServers",
-		Generate: func(instances []*data.ServerInstance) map[string]any {
-			return serversBy(instances, func(instance *data.ServerInstance) map[string]any {
-				return map[string]any{"type": "sse", "url": instance.Endpoint}
-			})
-		},
-	},
-	{
-		Name:           "zed",
-		Label:          "Zed",
-		ConfigFile:     map[string]string{"darwin": "~/.config/zed/settings.json", "linux": "~/.config/zed/settings.json", "windows": `%APPDATA%\Zed\settings.json`},
-		ConfigProperty: "context_servers",
-		Generate: func(instances []*data.ServerInstance) map[string]any {
-			return serversBy(instances, stdioBridgeEntry, "context_servers")
-		},
-	},
-	{
-		Name:           "kimi",
-		Label:          "Kimi Code",
-		ConfigFile:     map[string]string{"darwin": "~/.kimi/mcp.json", "linux": "~/.kimi/mcp.json", "windows": "~/.kimi/mcp.json"},
-		ConfigProperty: "mcpServers",
-		Generate: func(instances []*data.ServerInstance) map[string]any {
-			return serversBy(instances, func(instance *data.ServerInstance) map[string]any {
-				return map[string]any{"url": instance.Endpoint, "transport": "sse"}
-			})
-		},
-	},
-	{
-		Name:           "codebuddy",
-		Label:          "CodeBuddy",
-		ConfigFile:     map[string]string{"darwin": "~/.codebuddy.json", "linux": "~/.codebuddy.json", "windows": "~/.codebuddy.json"},
-		ConfigProperty: "mcpServers",
-		Generate: func(instances []*data.ServerInstance) map[string]any {
-			return serversBy(instances, func(instance *data.ServerInstance) map[string]any {
-				return map[string]any{"type": "sse", "url": instance.Endpoint}
-			})
-		},
-	},
-	{
-		Name:           "antigravity",
-		Label:          "Antigravity",
-		ConfigFile:     map[string]string{"darwin": "~/.gemini/config/mcp_config.json", "linux": "~/.gemini/config/mcp_config.json", "windows": "~/.gemini/config/mcp_config.json"},
-		ConfigProperty: "mcpServers",
-		Generate: func(instances []*data.ServerInstance) map[string]any {
-			return serversBy(instances, func(instance *data.ServerInstance) map[string]any {
-				return map[string]any{"type": "sse", "serverUrl": instance.Endpoint}
-			})
-		},
-	},
-	{
-		Name:  "chatwise",
-		Label: "ChatWise",
-		Generate: func(instances []*data.ServerInstance) map[string]any {
-			return serversBy(instances, func(instance *data.ServerInstance) map[string]any {
-				return map[string]any{"url": instance.Endpoint}
-			})
-		},
-	},
-	{
-		Name:  "cherrystudio",
-		Label: "CherryStudio",
-		Generate: func(instances []*data.ServerInstance) map[string]any {
-			servers := map[string]any{}
-			for _, instance := range instances {
-				if instance.Config == nil {
-					continue
-				}
-				servers[instance.Config.Name] = map[string]any{
-					"name":     instance.Config.Name,
-					"type":     "sse",
-					"url":      instance.Endpoint,
-					"isActive": true,
-				}
-			}
-			return map[string]any{"mcpServers": servers}
-		},
-	},
-	{
-		Name:           "deepchat",
-		Label:          "DeepChat",
-		ConfigFile:     map[string]string{"darwin": "~/Library/Application Support/DeepChat/mcp-settings.json", "linux": "~/.config/DeepChat/mcp-settings.json", "windows": `%APPDATA%\DeepChat/mcp-settings.json`},
-		ConfigProperty: "mcpServers",
-		Generate: func(instances []*data.ServerInstance) map[string]any {
-			servers := map[string]any{}
-			for _, instance := range instances {
-				if instance.Config == nil {
-					continue
-				}
-				servers[instance.Config.Name+"-"+instance.Config.ID] = map[string]any{
-					"type":         "sse",
-					"icons":        "🛠️",
-					"url":          instance.Endpoint,
-					"descriptions": "From MyMCP",
-					"disable":      false,
-					"autoApprove":  []string{"all"},
-				}
-			}
-			return map[string]any{"mcpServers": servers}
-		},
-	},
-}
+// supportedClients is the built-in plugin registry in label order.
+var supportedClients = loadSupportedClients()
 
-func serversBy(instances []*data.ServerInstance, entry func(*data.ServerInstance) map[string]any, keys ...string) map[string]any {
-	key := "mcpServers"
-	if len(keys) > 0 {
-		key = keys[0]
-	}
-	servers := map[string]any{}
-	for _, instance := range instances {
-		if instance.Config == nil {
-			continue
-		}
-		servers[instance.Config.Name] = entry(instance)
-	}
-	return map[string]any{key: servers}
-}
-
-// stdioBridgeEntry runs the pipe tool so an agent that takes commands alone
-// reaches the SSE endpoint.
-func stdioBridgeEntry(instance *data.ServerInstance) map[string]any {
-	return map[string]any{
-		"command": "mcp-pipe",
-		"args":    []string{"--mode", "sse2stdio", "--url", instance.Endpoint},
-	}
-}
-
-// codexEntries is Codex's [mcp_servers.<name>] tables, each a command since
-// Codex reaches no SSE server itself (Magpie's fmtCodex).
-func codexEntries(instances []*data.ServerInstance) map[string]any {
-	servers := map[string]any{}
-	for _, instance := range instances {
-		if instance.Config == nil {
-			continue
-		}
-		servers[instance.Config.Name] = map[string]any{
-			"command": "mcp-pipe",
-			"args":    []string{"--mode", "sse2stdio", "--url", instance.Endpoint},
-		}
-	}
-	return map[string]any{"mcp_servers": servers}
-}
-
-func codexPreview(instances []*data.ServerInstance) string {
-	raw, err := toml.Marshal(codexEntries(instances))
+func loadSupportedClients() []*clientDef {
+	agents, err := agent.Builtin()
 	if err != nil {
-		return ""
+		log.Println("built-in agent plugins:", err)
+		return nil
 	}
-	return string(raw)
-}
-
-func writeCodexConfig(path string, instances []*data.ServerInstance) error {
-	document := map[string]any{}
-	if raw, err := os.ReadFile(path); err == nil && len(raw) > 0 {
-		if err := toml.Unmarshal(raw, &document); err != nil {
-			return fmt.Errorf("%s: %w", path, err)
-		}
-	} else if err != nil && !os.IsNotExist(err) {
-		return err
+	clients := make([]*clientDef, 0, len(agents))
+	for _, a := range agents {
+		clients = append(clients, &clientDef{Name: a.ID(), Label: a.Label(), agent: a})
 	}
-	servers, _ := document["mcp_servers"].(map[string]any)
-	if servers == nil {
-		servers = map[string]any{}
-	}
-	added, _ := codexEntries(instances)["mcp_servers"].(map[string]any)
-	for name, entry := range added {
-		servers[name] = entry
-	}
-	document["mcp_servers"] = servers
-	raw, err := toml.Marshal(document)
-	if err != nil {
-		return err
-	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return err
-	}
-	return os.WriteFile(path, raw, 0o644)
+	return clients
 }
 
 func clientByName(name string) *clientDef {
@@ -441,60 +111,65 @@ func clientByName(name string) *clientDef {
 	return nil
 }
 
-// platformKey names the current platform as the client paths do.
-func platformKey() string {
-	switch runtime.GOOS {
-	case "windows":
-		return "windows"
-	case "darwin":
-		return "darwin"
-	default:
-		return "linux"
-	}
-}
-
 // ConfigPath returns the client's configuration file on this platform, "" when it has none.
 func (c *clientDef) ConfigPath() string {
-	if c.ConfigFile == nil {
+	if c.agent == nil {
 		return ""
 	}
-	return c.ConfigFile[platformKey()]
+	return c.agent.Path()
 }
 
 // Config returns the configuration the client expects for the instances.
 func (c *clientDef) Config(instances []*data.ServerInstance) map[string]any {
-	if c.Generate == nil {
+	rendered, err := c.render(instances)
+	if err != nil {
 		return nil
 	}
-	return c.Generate(instances)
+	if rendered.Document != nil {
+		return rendered.Document
+	}
+	doc := map[string]any{}
+	if err := json.Unmarshal([]byte(rendered.Content), &doc); err != nil {
+		return nil
+	}
+	return doc
 }
 
 // PreviewText is the configuration as the dialog shows it.
 func (c *clientDef) PreviewText(instances []*data.ServerInstance) string {
-	if c.Preview != nil {
-		return c.Preview(instances)
-	}
-	raw, err := json.MarshalIndent(c.Config(instances), "", "  ")
+	rendered, err := c.render(instances)
 	if err != nil {
 		return ""
 	}
-	return string(raw)
+	return rendered.Content
 }
 
-func expandHome(path string) string {
-	if path == "" {
-		return ""
+func (c *clientDef) render(instances []*data.ServerInstance) (plugin.Rendered, error) {
+	if c.agent == nil {
+		return plugin.Rendered{}, nil
 	}
-	path = strings.ReplaceAll(path, "%APPDATA%", os.Getenv("APPDATA"))
-	path = strings.ReplaceAll(path, "%LOCALAPPDATA%", os.Getenv("LOCALAPPDATA"))
-	if strings.HasPrefix(path, "~/") {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return path
+	return c.agent.Preview(plugin.RenderContext{
+		Mode: "direct", Entry: "mymcp", Bridge: configsync.BridgeCommand(),
+		Servers: clientServers(c.agent, instances),
+	})
+}
+
+func clientServers(adapter *agent.Agent, instances []*data.ServerInstance) []plugin.Server {
+	servers := make([]plugin.Server, 0, len(instances))
+	for _, instance := range instances {
+		if instance == nil || instance.Config == nil {
+			continue
 		}
-		return filepath.Join(home, path[2:])
+		name := instance.Config.Name
+		if name == "" {
+			name = instance.ID
+		}
+		servers = append(servers, plugin.Server{
+			Name: name, Key: adapter.Key(name, instance.Config.ID), ID: instance.Config.ID,
+			Transport: "sse", URL: instance.Endpoint,
+		})
 	}
-	return path
+	return servers
 }
 
 // saveManagedClientConfig merges the generated configuration into the client's file.
@@ -503,49 +178,12 @@ func saveManagedClientConfig(client *clientDef, instances []*data.ServerInstance
 	if path == "" {
 		return fmt.Errorf("%s has no configuration file", client.Label)
 	}
-	path = expandHome(path)
-	if path == "" || strings.Contains(path, "%") {
-		return fmt.Errorf("%s is not supported on this platform", client.Label)
-	}
-
-	if client.Write != nil {
-		return client.Write(path, instances)
-	}
-	document := map[string]any{}
-	if raw, err := os.ReadFile(path); err == nil {
-		if len(raw) > 0 {
-			if err := json.Unmarshal(raw, &document); err != nil {
-				return fmt.Errorf("%s: %w", path, err)
-			}
-		}
-	} else if !os.IsNotExist(err) {
-		return err
-	}
-
-	generated := client.Config(instances)
-	if client.ConfigProperty != "" {
-		section, _ := document[client.ConfigProperty].(map[string]any)
-		if section == nil {
-			section = map[string]any{}
-		}
-		if add, ok := generated[client.ConfigProperty].(map[string]any); ok {
-			for key, value := range add {
-				section[key] = value
-			}
-		}
-		document[client.ConfigProperty] = section
-	} else {
-		for key, value := range generated {
-			document[key] = value
-		}
-	}
-
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return err
-	}
-	raw, err := json.MarshalIndent(document, "", "  ")
+	rendered, err := client.agent.Render(plugin.RenderContext{
+		Mode: "direct", Entry: "mymcp", Bridge: configsync.BridgeCommand(),
+		Servers: clientServers(client.agent, instances),
+	})
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, append(raw, '\n'), 0o644)
+	return agent.WriteContent(path, rendered.Content)
 }

@@ -1,0 +1,15 @@
+{
+  "id": "kimi",
+  "label": "Kimi Code",
+  "version": "1.0.0",
+  "description": "Kimi Code MCP configuration",
+  "entry": "index.js",
+  "format": "json",
+  "section": "mcpServers",
+  "paths": {
+    "darwin": "~/.kimi/mcp.json",
+    "linux": "~/.kimi/mcp.json",
+    "windows": "~/.kimi/mcp.json"
+  },
+  "icon": "icon.svg"
+}

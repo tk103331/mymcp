@@ -1,0 +1,15 @@
+{
+  "id": "antigravity",
+  "label": "Antigravity",
+  "version": "1.0.0",
+  "description": "Antigravity MCP configuration",
+  "entry": "index.js",
+  "format": "json",
+  "section": "mcpServers",
+  "paths": {
+    "darwin": "~/.gemini/config/mcp_config.json",
+    "linux": "~/.gemini/config/mcp_config.json",
+    "windows": "~/.gemini/config/mcp_config.json"
+  },
+  "icon": "icon.svg"
+}

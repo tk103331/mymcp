@@ -499,5 +499,10 @@
   "gatewayImportNoSelection": "Select at least one server.",
   "gatewayImportRescan": "Rescan",
   "gatewayImportAgent": "Agent",
-  "gatewayImportAllAgents": "All agents"
+  "gatewayImportAllAgents": "All agents",
+  "pluginsInstalledSection": "Installed plugins",
+  "pluginsBuiltinSection": "Built-in adapters",
+  "pluginsBuiltinHint": "Shipped as JavaScript plugins and loaded on every start.",
+  "pluginsBuiltinBadge": "Built-in",
+  "pluginsPreviewOnly": "Preview only"
 }

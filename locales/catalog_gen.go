@@ -4201,3 +4201,53 @@ func GatewayImportAllAgents() string { return In(i18n.Locale()).GatewayImportAll
 func (msgs Messages) GatewayImportAllAgents() string {
 	return Catalog.Format(msgs.locale, "gatewayImportAllAgents", nil)
 }
+
+// PluginsInstalledSection says "Installed plugins"
+// in the language the app shows.
+func PluginsInstalledSection() string { return In(i18n.Locale()).PluginsInstalledSection() }
+
+// PluginsInstalledSection says "Installed plugins"
+// in the language of msgs.
+func (msgs Messages) PluginsInstalledSection() string {
+	return Catalog.Format(msgs.locale, "pluginsInstalledSection", nil)
+}
+
+// PluginsBuiltinSection says "Built-in adapters"
+// in the language the app shows.
+func PluginsBuiltinSection() string { return In(i18n.Locale()).PluginsBuiltinSection() }
+
+// PluginsBuiltinSection says "Built-in adapters"
+// in the language of msgs.
+func (msgs Messages) PluginsBuiltinSection() string {
+	return Catalog.Format(msgs.locale, "pluginsBuiltinSection", nil)
+}
+
+// PluginsBuiltinHint says "Shipped as JavaScript plugins and loaded on every start."
+// in the language the app shows.
+func PluginsBuiltinHint() string { return In(i18n.Locale()).PluginsBuiltinHint() }
+
+// PluginsBuiltinHint says "Shipped as JavaScript plugins and loaded on every start."
+// in the language of msgs.
+func (msgs Messages) PluginsBuiltinHint() string {
+	return Catalog.Format(msgs.locale, "pluginsBuiltinHint", nil)
+}
+
+// PluginsBuiltinBadge says "Built-in"
+// in the language the app shows.
+func PluginsBuiltinBadge() string { return In(i18n.Locale()).PluginsBuiltinBadge() }
+
+// PluginsBuiltinBadge says "Built-in"
+// in the language of msgs.
+func (msgs Messages) PluginsBuiltinBadge() string {
+	return Catalog.Format(msgs.locale, "pluginsBuiltinBadge", nil)
+}
+
+// PluginsPreviewOnly says "Preview only"
+// in the language the app shows.
+func PluginsPreviewOnly() string { return In(i18n.Locale()).PluginsPreviewOnly() }
+
+// PluginsPreviewOnly says "Preview only"
+// in the language of msgs.
+func (msgs Messages) PluginsPreviewOnly() string {
+	return Catalog.Format(msgs.locale, "pluginsPreviewOnly", nil)
+}

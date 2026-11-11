@@ -1,0 +1,15 @@
+{
+  "id": "crush",
+  "label": "Crush",
+  "version": "1.0.0",
+  "description": "Crush MCP configuration",
+  "entry": "index.js",
+  "format": "json",
+  "section": "mcp",
+  "paths": {
+    "darwin": "~/.config/crush/crush.json",
+    "linux": "~/.config/crush/crush.json",
+    "windows": "%LOCALAPPDATA%\\crush\\crush.json"
+  },
+  "icon": "icon.png"
+}

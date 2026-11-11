@@ -23,6 +23,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/tk103331/mymcp/internal/agent"
 	"github.com/tk103331/mymcp/internal/configsync"
 	"github.com/tk103331/mymcp/internal/data"
 	"github.com/tk103331/mymcp/internal/gateway"
@@ -1102,11 +1103,19 @@ func pluginCommand(args []string) error {
 	dir := filepath.Join(home(), "plugins")
 	switch args[0] {
 	case "list":
-		plugins, errs := plugin.Discover(dir)
-		for _, p := range plugins {
-			fmt.Printf("%s\t%s\t%s\t%s\n", p.Manifest.ID, p.Manifest.Label, p.Manifest.Version, p.Path())
+		registry, err := agent.New(home())
+		if err != nil {
+			return err
 		}
-		for _, err := range errs {
+		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+		fmt.Fprintln(w, "ID\tLABEL\tVERSION\tBUILTIN\tCONFIG")
+		for _, adapter := range registry.Agents() {
+			fmt.Fprintf(w, "%s\t%s\t%s\t%t\t%s\n", adapter.ID(), adapter.Label(), adapter.Plugin.Manifest.Version, adapter.Builtin, adapter.Path())
+		}
+		if err := w.Flush(); err != nil {
+			return err
+		}
+		for _, err := range registry.Errors() {
 			fmt.Fprintln(os.Stderr, "plugin:", err)
 		}
 		return nil

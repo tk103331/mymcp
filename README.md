@@ -41,8 +41,10 @@ The repository includes:
   rate limits, HTTPS/mTLS and a Docker sandbox executor.
 - **Portable profiles** — export and import signed profile bundles without
   copying secret values.
-- **JavaScript adapters** — add a new client with `render`, `load` and `detect`
-  hooks running in [moejs](https://github.com/Calcium-Ion/moejs).
+- **Plugin-based client support** — every built-in agent adapter is an embedded
+  JavaScript plugin with `render`, `load` and `detect` hooks running in
+  [moejs](https://github.com/Calcium-Ion/moejs). Add or override a client
+  without recompiling MyMCP.
 - **Native UI** — Chinese and English, light and dark themes, with Overview,
   Servers, Profiles, Catalog, Clients, Debug, Secrets, Plugins, Usage and
   Settings pages.
@@ -72,8 +74,9 @@ Prebuilt desktop apps and CLI archives are published on the
 │   ├── mcp-router/         # MCP router, with router.json
 │   └── mymcp/              # Local gateway daemon and CLI
 ├── internal/
+│   ├── agent/              # Embedded built-in agent plugins and document codecs
 │   ├── app/                # Native UI: pages, dialogs, client config, catalog
-│   ├── configsync/         # Client adapters, plan/apply/detach, imports
+│   ├── configsync/         # Plan/apply/detach and imports through agent plugins
 │   ├── data/               # Local data and JSON settings
 │   ├── gateway/            # MCP aggregation, auth, usage endpoints
 │   ├── importer/           # Import servers from existing agents
@@ -153,7 +156,8 @@ The desktop app has:
   or detach it. Entries changed after MyMCP wrote them are marked.
 - **Secrets** — store encrypted API keys and tokens referenced as
   `secret://name`.
-- **Plugins** — install, reload and remove JavaScript client adapters.
+- **Plugins** — inspect the built-in JavaScript adapters and install, reload or
+  remove additional client adapters.
 - **Usage** — calls, errors, latency and recent activity from the same SQLite
   data.
 - **Settings** — language, theme, launch at login and the gateway address.

@@ -1,0 +1,15 @@
+{
+  "id": "gemini",
+  "label": "Gemini CLI",
+  "version": "1.0.0",
+  "description": "Gemini CLI MCP configuration",
+  "entry": "index.js",
+  "format": "json",
+  "section": "mcpServers",
+  "paths": {
+    "darwin": "~/.gemini/settings.json",
+    "linux": "~/.gemini/settings.json",
+    "windows": "~/.gemini/settings.json"
+  },
+  "icon": "icon.svg"
+}

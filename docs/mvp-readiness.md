@@ -47,6 +47,10 @@
 
 ### 客户端配置
 
+- 所有 Agent 客户端支持都是 JavaScript 插件；内置插件随程序嵌入，用户插件位于
+  `~/.mymcp/plugins/`，同 ID 可覆盖内置插件。
+- 插件声明 `format`、`section` 和 `paths`，通过 `render` 返回完整文档；MyMCP
+  负责 JSON/JSONC/TOML/YAML 编解码、备份、原子写入和冲突检测。
 - Router 模式写入客户端原生配置。
 - 桌面构建内置 `mcp-pipe`；首次启动复制到 `~/.mymcp/bin/mcp-pipe`，桥接客户端
   使用该绝对路径，不依赖 `PATH`。
@@ -84,7 +88,7 @@
 
 ### 插件与导入
 
-- 安装/重载/移除 JavaScript 客户端适配器。
+- 展示内置适配器；安装、重载、移除用户 JavaScript 客户端适配器。
 - 插件运行在 moejs，64 MiB、10 秒限制，无文件/网络/定时器。
 - 导入现有客户端配置，过滤 MyMCP 路由和 `mcp-pipe` 桥接条目。
 - 导入前扫描并列出检测到的服务器，可按 Agent 过滤，选择单个服务器、全选/全不选，
@@ -108,7 +112,7 @@ go test ./...                    通过
 go test -race ./...              通过
 go vet ./...                     通过
 go tool mygo vet                 通过
-go tool mygo i18n check          通过（416 条中英文文案）
+go tool mygo i18n check          通过（421 条中英文文案）
 go tool mygo build               通过
 ```
 

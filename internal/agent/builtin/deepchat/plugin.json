@@ -1,0 +1,16 @@
+{
+  "id": "deepchat",
+  "label": "DeepChat",
+  "version": "1.0.0",
+  "description": "DeepChat MCP configuration",
+  "entry": "index.js",
+  "format": "json",
+  "section": "mcpServers",
+  "paths": {
+    "darwin": "~/Library/Application Support/DeepChat/mcp-settings.json",
+    "linux": "~/.config/DeepChat/mcp-settings.json",
+    "windows": "%APPDATA%\\DeepChat/mcp-settings.json"
+  },
+  "key": "{name}-{id}",
+  "icon": "icon.png"
+}

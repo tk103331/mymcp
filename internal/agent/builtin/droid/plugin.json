@@ -1,0 +1,15 @@
+{
+  "id": "droid",
+  "label": "Factory Droid",
+  "version": "1.0.0",
+  "description": "Factory Droid MCP configuration",
+  "entry": "index.js",
+  "format": "json",
+  "section": "mcpServers",
+  "paths": {
+    "darwin": "~/.factory/mcp.json",
+    "linux": "~/.factory/mcp.json",
+    "windows": "~/.factory/mcp.json"
+  },
+  "icon": "icon.svg"
+}

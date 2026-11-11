@@ -8,7 +8,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -25,13 +27,20 @@ type Manifest struct {
 	Description string            `json:"description,omitempty"`
 	Entry       string            `json:"entry,omitempty"`
 	Format      string            `json:"format,omitempty"`
+	Section     string            `json:"section,omitempty"`
+	Key         string            `json:"key,omitempty"`
 	Paths       map[string]string `json:"paths"`
 	Icon        string            `json:"icon,omitempty"`
+	// Builtin marks adapters shipped with MyMCP. It is set by the loader and
+	// cannot be claimed by a plugin.json file.
+	Builtin bool `json:"-"`
 }
 
 // Server is one server handed to a plugin in Direct mode.
 type Server struct {
 	Name      string            `json:"name"`
+	Key       string            `json:"key,omitempty"`
+	ID        string            `json:"id,omitempty"`
 	Transport string            `json:"transport"`
 	Command   string            `json:"command,omitempty"`
 	Args      []string          `json:"args,omitempty"`
@@ -42,13 +51,17 @@ type Server struct {
 
 // RenderContext is the argument of a plugin's render function.
 type RenderContext struct {
-	Mode     string   `json:"mode"` // router | direct | detach
-	Endpoint string   `json:"endpoint,omitempty"`
-	Profile  string   `json:"profile,omitempty"`
-	Content  string   `json:"content,omitempty"`
-	Path     string   `json:"path"`
-	OS       string   `json:"os"`
-	Servers  []Server `json:"servers,omitempty"`
+	Mode     string         `json:"mode"` // router | direct | detach
+	Endpoint string         `json:"endpoint,omitempty"`
+	Profile  string         `json:"profile,omitempty"`
+	Entry    string         `json:"entry,omitempty"`
+	Content  string         `json:"content,omitempty"`
+	Path     string         `json:"path"`
+	OS       string         `json:"os"`
+	Bridge   string         `json:"bridge,omitempty"`
+	Document map[string]any `json:"document,omitempty"`
+	Servers  []Server       `json:"servers,omitempty"`
+	Remove   []string       `json:"remove,omitempty"`
 }
 
 // ImportedServer is one server returned by a plugin's load function.
@@ -64,21 +77,38 @@ type ImportedServer struct {
 
 // LoadContext is the argument of a plugin's load function.
 type LoadContext struct {
-	Content string `json:"content"`
-	Path    string `json:"path"`
-	OS      string `json:"os"`
+	Content  string         `json:"content"`
+	Document map[string]any `json:"document,omitempty"`
+	Path     string         `json:"path"`
+	OS       string         `json:"os"`
 }
 
 // Plugin is a loaded plugin.
 type Plugin struct {
 	Dir      string
 	Manifest Manifest
+
 	module   *moejs.Module
+	icon     []byte
+	iconName string
 }
 
 // Load reads a plugin directory containing plugin.json and its entry module.
 func Load(dir string) (*Plugin, error) {
-	raw, err := os.ReadFile(filepath.Join(dir, "plugin.json"))
+	p, err := loadFS(os.DirFS(dir), ".", dir)
+	if err != nil {
+		return nil, err
+	}
+	return p, nil
+}
+
+// LoadFS reads a plugin from fsys at dir. dir must be relative to fsys.
+func LoadFS(fsys fs.FS, dir string) (*Plugin, error) {
+	return loadFS(fsys, dir, "")
+}
+
+func loadFS(fsys fs.FS, dir, diskDir string) (*Plugin, error) {
+	raw, err := fs.ReadFile(fsys, path.Join(dir, "plugin.json"))
 	if err != nil {
 		return nil, err
 	}
@@ -95,11 +125,11 @@ func Load(dir string) (*Plugin, error) {
 	if manifest.Entry == "" {
 		manifest.Entry = "index.js"
 	}
-	entry, err := within(dir, manifest.Entry)
+	entry, err := withinFS(dir, manifest.Entry)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", dir, err)
 	}
-	source, err := os.ReadFile(entry)
+	source, err := fs.ReadFile(fsys, entry)
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +137,15 @@ func Load(dir string) (*Plugin, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", manifest.ID, err)
 	}
-	return &Plugin{Dir: dir, Manifest: manifest, module: module}, nil
+	p := &Plugin{Dir: diskDir, Manifest: manifest, module: module}
+	if manifest.Icon != "" {
+		if iconPath, err := withinFS(dir, manifest.Icon); err == nil {
+			if icon, err := fs.ReadFile(fsys, iconPath); err == nil {
+				p.icon, p.iconName = icon, path.Ext(iconPath)
+			}
+		}
+	}
+	return p, nil
 }
 
 // Discover loads every valid plugin in dir. Invalid plugins are returned as
@@ -136,9 +174,10 @@ func Discover(dir string) ([]*Plugin, []error) {
 	return plugins, errs
 }
 
-// IconPath returns the plugin's icon file, or "" when it has none.
+// IconPath returns the plugin's icon file on disk, or "" for embedded
+// plugins and plugins without an icon.
 func (p *Plugin) IconPath() string {
-	if p.Manifest.Icon == "" {
+	if p.Dir == "" || p.Manifest.Icon == "" {
 		return ""
 	}
 	path, err := within(p.Dir, p.Manifest.Icon)
@@ -146,6 +185,14 @@ func (p *Plugin) IconPath() string {
 		return ""
 	}
 	return path
+}
+
+// Icon returns the plugin's icon bytes and file extension.
+func (p *Plugin) Icon() ([]byte, string, bool) {
+	if len(p.icon) == 0 {
+		return nil, "", false
+	}
+	return p.icon, p.iconName, true
 }
 
 // Path returns the native configuration path on this OS.
@@ -184,41 +231,49 @@ func (p *Plugin) Detect(ctx context.Context) bool {
 	return present
 }
 
-// Render calls the plugin's render export and returns the new file content.
-func (p *Plugin) Render(ctx context.Context, input RenderContext) (string, error) {
+// Rendered is what a plugin's render export returned. A plugin either owns
+// the file and returns Content, or returns a Document that MyMCP serializes
+// using the manifest format.
+type Rendered struct {
+	Content  string
+	Document map[string]any
+}
+
+// Render calls the plugin's render export.
+func (p *Plugin) Render(ctx context.Context, input RenderContext) (Rendered, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	rt, hook, ok, err := p.runtime(ctx, "render")
 	if err != nil {
-		return "", err
+		return Rendered{}, err
 	}
 	if !ok {
-		return "", fmt.Errorf("%s: render is not exported", p.Manifest.ID)
+		return Rendered{}, fmt.Errorf("%s: render is not exported", p.Manifest.ID)
 	}
-	defer watchInterrupt(ctx, rt)()
 	defer watchInterrupt(ctx, rt)()
 	defer rt.ReleaseCallData()
 	arg, err := rt.FromGo(input)
 	if err != nil {
-		return "", err
+		return Rendered{}, err
 	}
 	res, err := rt.Call(hook, arg)
 	if err != nil {
-		return "", fmt.Errorf("%s render: %w", p.Manifest.ID, err)
+		return Rendered{}, fmt.Errorf("%s render: %w", p.Manifest.ID, err)
 	}
 	var raw any
 	if err := rt.Unmarshal(res, &raw); err != nil {
-		return "", err
+		return Rendered{}, err
 	}
 	switch value := raw.(type) {
 	case string:
-		return value, nil
+		return Rendered{Content: value}, nil
 	case map[string]any:
 		if content, ok := value["content"].(string); ok {
-			return content, nil
+			return Rendered{Content: content}, nil
 		}
+		return Rendered{Document: value}, nil
 	}
-	return "", fmt.Errorf("%s render: want a string or {content}", p.Manifest.ID)
+	return Rendered{}, fmt.Errorf("%s render: want a string or an object", p.Manifest.ID)
 }
 
 // LoadServers calls the plugin's load export.
@@ -308,6 +363,17 @@ func within(dir, name string) (string, error) {
 	return filepath.Join(dir, clean), nil
 }
 
+func withinFS(dir, name string) (string, error) {
+	if name == "" || path.IsAbs(name) {
+		return "", fmt.Errorf("invalid plugin path %q", name)
+	}
+	clean := path.Clean(name)
+	if clean == ".." || strings.HasPrefix(clean, "../") {
+		return "", fmt.Errorf("plugin path %q escapes its directory", name)
+	}
+	return path.Join(dir, clean), nil
+}
+
 func validID(id string) bool {
 	return id != "" && id != "." && id != ".." && !strings.ContainsAny(id, `/\`) && !strings.ContainsRune(id, 0)
 }
@@ -333,7 +399,14 @@ func Remove(root, id string) error {
 	if !validID(id) {
 		return fmt.Errorf("invalid plugin id %q", id)
 	}
-	return os.RemoveAll(filepath.Join(root, id))
+	dir := filepath.Join(root, id)
+	if _, err := os.Stat(dir); err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("%s is not installed", id)
+		}
+		return err
+	}
+	return os.RemoveAll(dir)
 }
 
 func copyDir(source, dest string) error {

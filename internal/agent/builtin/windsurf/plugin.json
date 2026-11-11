@@ -1,0 +1,15 @@
+{
+  "id": "windsurf",
+  "label": "Windsurf",
+  "version": "1.0.0",
+  "description": "Windsurf MCP configuration",
+  "entry": "index.js",
+  "format": "json",
+  "section": "mcpServers",
+  "paths": {
+    "darwin": "~/.codeium/windsurf/mcp_config.json",
+    "linux": "~/.codeium/windsurf/mcp_config.json",
+    "windows": "~/.codeium/windsurf/mcp_config.json"
+  },
+  "icon": "icon.svg"
+}

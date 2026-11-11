@@ -1,0 +1,15 @@
+{
+  "id": "claude",
+  "label": "Claude Desktop",
+  "version": "1.0.0",
+  "description": "Claude Desktop MCP configuration",
+  "entry": "index.js",
+  "format": "json",
+  "section": "mcpServers",
+  "paths": {
+    "darwin": "~/Library/Application Support/Claude/claude_desktop_config.json",
+    "linux": "~/.config/Claude/claude_desktop_config.json",
+    "windows": "%APPDATA%\\Claude\\claude_desktop_config.json"
+  },
+  "icon": "icon.svg"
+}

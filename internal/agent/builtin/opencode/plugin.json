@@ -1,0 +1,15 @@
+{
+  "id": "opencode",
+  "label": "OpenCode",
+  "version": "1.0.0",
+  "description": "OpenCode MCP configuration",
+  "entry": "index.js",
+  "format": "json",
+  "section": "mcp",
+  "paths": {
+    "darwin": "~/.config/opencode/opencode.json",
+    "linux": "~/.config/opencode/opencode.json",
+    "windows": "~/.config/opencode/opencode.json"
+  },
+  "icon": "icon.svg"
+}

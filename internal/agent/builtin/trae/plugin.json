@@ -1,0 +1,15 @@
+{
+  "id": "trae",
+  "label": "Trae",
+  "version": "1.0.0",
+  "description": "Trae MCP configuration",
+  "entry": "index.js",
+  "format": "json",
+  "section": "mcpServers",
+  "paths": {
+    "darwin": "~/Library/Application Support/Trae/User/mcp.json",
+    "linux": "~/.config/Trae/User/mcp.json",
+    "windows": "%APPDATA%\\Trae\\User\\mcp.json"
+  },
+  "icon": "icon.svg"
+}

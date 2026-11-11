@@ -1,0 +1,15 @@
+{
+  "id": "cursor",
+  "label": "Cursor",
+  "version": "1.0.0",
+  "description": "Cursor MCP configuration",
+  "entry": "index.js",
+  "format": "json",
+  "section": "mcpServers",
+  "paths": {
+    "darwin": "~/.cursor/mcp.json",
+    "linux": "~/.cursor/mcp.json",
+    "windows": "~/.cursor/mcp.json"
+  },
+  "icon": "icon.svg"
+}

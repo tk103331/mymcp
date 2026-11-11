@@ -230,7 +230,8 @@ internal/
   gateway/                 # MCP HTTP/SSE/Streamable HTTP、session、路由
   router/                  # profile、命名空间、工具过滤/搜索
   lifecycle/               # stdio 进程、健康检查、懒启动、idle 回收
-  configsync/              # 客户端发现、格式化、plan/apply、备份、漂移
+  agent/                   # 内置 Agent JavaScript 插件与文档编解码
+  configsync/              # 客户端发现、plan/apply、备份、漂移
   secrets/                 # keychain、加密文件、OAuth token、引用解析
   usage/                   # 事件、SQLite、聚合、Prometheus/OTel 导出
   auth/                    # 网关 Key、scope、配额
@@ -294,8 +295,10 @@ type Adapter interface {
 - **漂移检测**：文件 mtime/hash 变化时提示“客户端配置已被修改”，提供 diff 和三选一：保留客户端改动 / 覆盖为 MyMCP / 取消托管。
 - **卸载**：只移除 MyMCP 条目，并恢复原始片段。
 
-**客户端适配优先级**：
-Cursor、Claude Code、Claude Desktop、VS Code、Codex、Windsurf、Trae、Gemini CLI、OpenCode、Cline、Kiro、Qoder、Crush、LM Studio。
+**客户端适配**：所有 Agent 适配器都是 JavaScript 插件。内置插件随程序嵌入，
+声明目标路径、文件格式和条目根节点，通过 `render`/`load`/`detect` 完成读写；
+用户插件位于 `~/.mymcp/plugins/`，同 ID 可覆盖内置适配器。新增客户端不需要修改
+Go 代码。
 
 ### 5.2 路由与工具面
 

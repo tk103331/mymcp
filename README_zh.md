@@ -36,8 +36,9 @@
 - **用量与访问控制**：SQLite 调用记录、客户端网关 Key、频率限制、HTTPS/mTLS
   和 Docker 沙箱执行器。
 - **可移植配置组**：导出/导入带签名的配置包，不携带密钥明文。
-- **JavaScript 适配器**：通过 `render`、`load`、`detect` 钩子扩展新客户端，
-  运行在 [moejs](https://github.com/Calcium-Ion/moejs) 中。
+- **插件化客户端支持**：所有内置 Agent 适配器都是内嵌的 JavaScript 插件，通过
+  `render`、`load`、`detect` 钩子运行在
+  [moejs](https://github.com/Calcium-Ion/moejs) 中；新增或覆盖客户端无需重新编译。
 - **原生界面**：中英文、浅色/深色主题，包含概览、服务器、配置组、服务目录、客户端、
   调试、密钥、插件、用量和设置页面。
 
@@ -65,8 +66,9 @@ MyMCP 是一个 **本机优先的 MCP 网关**：所有客户端共用一个端�
 │   ├── mcp-router/         # MCP 路由，含 router.json
 │   └── mymcp/              # 本地网关守护进程与命令行
 ├── internal/
+│   ├── agent/              # 内置 Agent 插件与文档编解码
 │   ├── app/                # 原生 UI：页面、对话框、客户端配置、服务目录
-│   ├── configsync/         # 客户端适配器、plan/apply/detach、导入
+│   ├── configsync/         # 通过 Agent 插件执行 plan/apply/detach 与导入
 │   ├── data/               # 本地数据与 JSON 设置
 │   ├── gateway/            # MCP 聚合、鉴权、用量接口
 │   ├── importer/           # 从现有 Agent 导入服务器
@@ -139,7 +141,7 @@ bin/mymcp doctor
 - **客户端**：检测已安装客户端，预览并应用路由条目，或断开托管配置；MyMCP
   写入后被修改的条目会标记为“已修改”。
 - **密钥**：保存通过 `secret://名称` 引用的加密 API Key 和 Token。
-- **插件**：安装、重载、移除 JavaScript 客户端适配器。
+- **插件**：查看内置 JavaScript 适配器，并安装、重载、移除额外适配器。
 - **用量**：从同一个 SQLite 数据读取调用次数、错误、延迟和最近活动。
 - **设置**：语言、主题、开机启动和网关地址。
 

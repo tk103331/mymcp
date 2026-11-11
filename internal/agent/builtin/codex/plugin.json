@@ -1,0 +1,15 @@
+{
+  "id": "codex",
+  "label": "Codex",
+  "version": "1.0.0",
+  "description": "Codex MCP configuration",
+  "entry": "index.js",
+  "format": "toml",
+  "section": "mcp_servers",
+  "paths": {
+    "darwin": "~/.codex/config.toml",
+    "linux": "~/.codex/config.toml",
+    "windows": "~/.codex/config.toml"
+  },
+  "icon": "icon.svg"
+}

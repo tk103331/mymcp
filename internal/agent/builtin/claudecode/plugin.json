@@ -1,0 +1,15 @@
+{
+  "id": "claudecode",
+  "label": "Claude Code",
+  "version": "1.0.0",
+  "description": "Claude Code MCP configuration",
+  "entry": "index.js",
+  "format": "json",
+  "section": "mcpServers",
+  "paths": {
+    "darwin": "~/.claude.json",
+    "linux": "~/.claude.json",
+    "windows": "~/.claude.json"
+  },
+  "icon": "icon.svg"
+}

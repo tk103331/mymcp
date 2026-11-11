@@ -1,0 +1,15 @@
+{
+  "id": "codebuddy",
+  "label": "CodeBuddy",
+  "version": "1.0.0",
+  "description": "CodeBuddy MCP configuration",
+  "entry": "index.js",
+  "format": "json",
+  "section": "mcpServers",
+  "paths": {
+    "darwin": "~/.codebuddy.json",
+    "linux": "~/.codebuddy.json",
+    "windows": "~/.codebuddy.json"
+  },
+  "icon": "icon.svg"
+}

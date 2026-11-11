@@ -142,11 +142,12 @@ type app struct {
 	debugBusy     bool
 	debugList     ui.ListState
 
-	pluginList   []*plugin.Plugin
-	pluginErrors []error
-	pluginRemove *plugin.Plugin
-	pluginNotice string
-	pluginError  string
+	pluginList        []*plugin.Plugin
+	builtinPluginList []*plugin.Plugin
+	pluginErrors      []error
+	pluginRemove      *plugin.Plugin
+	pluginNotice      string
+	pluginError       string
 
 	secretNames     []string
 	secretError     string

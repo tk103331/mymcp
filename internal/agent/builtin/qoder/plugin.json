@@ -1,0 +1,15 @@
+{
+  "id": "qoder",
+  "label": "Qoder",
+  "version": "1.0.0",
+  "description": "Qoder MCP configuration",
+  "entry": "index.js",
+  "format": "json",
+  "section": "mcpServers",
+  "paths": {
+    "darwin": "~/.qoder/settings.json",
+    "linux": "~/.qoder/settings.json",
+    "windows": "~/.qoder/settings.json"
+  },
+  "icon": "icon.svg"
+}

@@ -1,0 +1,15 @@
+{
+  "id": "zed",
+  "label": "Zed",
+  "version": "1.0.0",
+  "description": "Zed MCP configuration",
+  "entry": "index.js",
+  "format": "json",
+  "section": "context_servers",
+  "paths": {
+    "darwin": "~/.config/zed/settings.json",
+    "linux": "~/.config/zed/settings.json",
+    "windows": "%APPDATA%\\Zed\\settings.json"
+  },
+  "icon": "icon.svg"
+}

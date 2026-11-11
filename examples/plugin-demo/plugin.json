@@ -9,5 +9,6 @@
     "darwin": "~/.demo-agent/mcp.json",
     "linux": "~/.demo-agent/mcp.json",
     "windows": "%APPDATA%\\DemoAgent\\mcp.json"
-  }
+  },
+  "section": "mcpServers"
 }

@@ -1,0 +1,11 @@
+{
+  "id": "cherrystudio",
+  "label": "CherryStudio",
+  "version": "1.0.0",
+  "description": "CherryStudio MCP configuration",
+  "entry": "index.js",
+  "format": "json",
+  "section": "mcpServers",
+  "paths": {},
+  "icon": "icon.svg"
+}

@@ -1,0 +1,11 @@
+{
+  "id": "chatwise",
+  "label": "ChatWise",
+  "version": "1.0.0",
+  "description": "ChatWise MCP configuration",
+  "entry": "index.js",
+  "format": "json",
+  "section": "mcpServers",
+  "paths": {},
+  "icon": "icon.png"
+}

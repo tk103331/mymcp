@@ -1,9 +1,7 @@
 package app
 
 import (
-	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
@@ -25,23 +23,16 @@ func (a *app) loadPlugins() {
 		return
 	}
 	a.pluginList = a.syncManager.Plugins()
+	a.builtinPluginList = a.syncManager.BuiltinPlugins()
 	a.pluginErrors = a.syncManager.PluginErrors()
 	for _, p := range a.pluginList {
-		iconPath := p.IconPath()
-		if iconPath == "" {
-			continue
+		if raw, name, ok := p.Icon(); ok {
+			registerClientIcon("plugin:"+p.Manifest.ID, raw, name)
 		}
-		raw, err := os.ReadFile(iconPath)
-		if err != nil {
-			continue
-		}
-		key := "plugin:" + p.Manifest.ID
-		if strings.HasSuffix(iconPath, ".svg") {
-			if svg, err := ui.ParseSVG(raw); err == nil {
-				clientSVGs[key] = svg
-			}
-		} else if bitmap, err := ui.DecodeBitmap(raw); err == nil {
-			clientBitmaps[key] = bitmap
+	}
+	for _, p := range a.builtinPluginList {
+		if raw, name, ok := p.Icon(); ok {
+			registerClientIcon("plugin:"+p.Manifest.ID, raw, name)
 		}
 	}
 }
@@ -150,42 +141,72 @@ func (a *app) pluginsPage(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
 					}
 				})
 			}
-			if len(a.pluginList) == 0 {
-				ui.Column(c).FillWidth().Padding(44, 36).Gap(10).Center().Radius(14).
-					Background(t.Surface).Border(1, t.Border).BorderStyle(ui.BorderDashed).Children(func() {
-					a.iconTile(c, t, iconPuzzle, 44, 20)
-					ui.Text(c, msgs.PluginsEmpty()).FontSize(15).Bold()
-					ui.Text(c, msgs.PluginsEmptyHint()).FontSize(12).TextColor(t.TextMuted)
-					if ui.PrimaryButton(c, msgs.PluginsInstall()).Clicked() {
-						a.installPlugin(c, msgs)
-					}
-				})
-				return
-			}
-			ui.Grid(c).Columns(2).Gap(14).Children(func() {
-				for _, p := range a.pluginList {
-					p := p
-					ui.Column(c).Padding(18).Gap(10).Radius(14).Background(t.Surface).
-						Border(1, t.Border).Children(func() {
-						ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
-							clientIcon(c, "plugin:"+p.Manifest.ID, 30, t.Accent)
-							ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
-								ui.Text(c, p.Manifest.Label).FontSize(15).Bold().SingleLine()
-								ui.Textf(c, "%s · v%s", p.Manifest.ID, p.Manifest.Version).FontSize(10.5).TextColor(t.TextMuted)
-							})
-							if ui.Button(c, "").Label(msgs.PluginsRemove()).Tooltip(msgs.PluginsRemove()).
-								Padding(4, 7).Children(func() { ui.Icon(c, iconTrash).Size(12, 12).TextColor(t.Danger) }).Clicked() {
-								a.pluginRemove = p
-							}
-						})
-						if p.Manifest.Description != "" {
-							ui.Text(c, p.Manifest.Description).FontSize(12).TextColor(t.TextMuted).MaxLines(2)
+
+			a.pluginSection(c, t, msgs, msgs.PluginsInstalledSection(), len(a.pluginList), func() {
+				if len(a.pluginList) == 0 {
+					ui.Column(c).FillWidth().Padding(28, 24).Gap(8).Center().Radius(14).
+						Background(t.Surface).Border(1, t.Border).BorderStyle(ui.BorderDashed).Children(func() {
+						ui.Text(c, msgs.PluginsEmpty()).FontSize(14).Bold()
+						ui.Text(c, msgs.PluginsEmptyHint()).FontSize(12).TextColor(t.TextMuted)
+						if ui.PrimaryButton(c, msgs.PluginsInstall()).Clicked() {
+							a.installPlugin(c, msgs)
 						}
-						ui.Text(c, p.Dir).FontSize(10.5).TextColor(t.TextMuted).SingleLine()
 					})
+					return
 				}
+				a.pluginGrid(c, t, msgs, a.pluginList, true)
+			})
+
+			a.pluginSection(c, t, msgs, msgs.PluginsBuiltinSection(), len(a.builtinPluginList), func() {
+				ui.Text(c, msgs.PluginsBuiltinHint()).FontSize(11.5).TextColor(t.TextMuted)
+				a.pluginGrid(c, t, msgs, a.builtinPluginList, false)
 			})
 		})
+	})
+}
+
+func (a *app) pluginSection(c *ui.Context, t *ui.Theme, msgs locales.Messages, title string, count int, body func()) {
+	ui.Row(c).AlignItems(ui.Center).Children(func() {
+		ui.Text(c, title).FontSize(14).Bold()
+		ui.Spacer(c)
+		ui.Textf(c, "%d", count).FontSize(11).TextColor(t.TextMuted)
+	})
+	body()
+}
+
+func (a *app) pluginGrid(c *ui.Context, t *ui.Theme, msgs locales.Messages, plugins []*plugin.Plugin, removable bool) {
+	ui.Grid(c).Columns(2).Gap(14).Children(func() {
+		for _, p := range plugins {
+			p := p
+			ui.Column(c).Padding(18).Gap(10).Radius(14).Background(t.Surface).
+				Border(1, t.Border).Children(func() {
+				ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
+					clientIcon(c, "plugin:"+p.Manifest.ID, 30, t.Accent)
+					ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
+						ui.Text(c, p.Manifest.Label).FontSize(15).Bold().SingleLine()
+						ui.Textf(c, "%s · v%s", p.Manifest.ID, p.Manifest.Version).FontSize(10.5).TextColor(t.TextMuted)
+					})
+					if p.Manifest.Builtin {
+						ui.Text(c, msgs.PluginsBuiltinBadge()).FontSize(10).TextColor(t.Accent)
+					} else if removable {
+						if ui.Button(c, "").Label(msgs.PluginsRemove()).Tooltip(msgs.PluginsRemove()).
+							Padding(4, 7).Children(func() { ui.Icon(c, iconTrash).Size(12, 12).TextColor(t.Danger) }).Clicked() {
+							a.pluginRemove = p
+						}
+					}
+				})
+				if p.Manifest.Description != "" {
+					ui.Text(c, p.Manifest.Description).FontSize(12).TextColor(t.TextMuted).MaxLines(2)
+				}
+				if p.Dir != "" {
+					ui.Text(c, p.Dir).FontSize(10.5).TextColor(t.TextMuted).SingleLine()
+				} else if len(p.Manifest.Paths) == 0 {
+					ui.Text(c, msgs.PluginsPreviewOnly()).FontSize(10.5).TextColor(t.TextMuted)
+				} else if p.Manifest.Format != "" {
+					ui.Textf(c, "%s · %s", p.Manifest.Format, p.Manifest.Section).FontSize(10.5).TextColor(t.TextMuted)
+				}
+			})
+		}
 	})
 }
 

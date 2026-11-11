@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 	"encoding/json"
-	"os"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
@@ -21,20 +20,9 @@ func (a *app) loadClients() {
 		}
 	}
 	a.clientStatuses = a.syncManager.Statuses()
-	for _, status := range a.clientStatuses {
-		if status.Icon == "" {
-			continue
-		}
-		raw, err := os.ReadFile(status.Icon)
-		if err != nil {
-			continue
-		}
-		if strings.HasSuffix(status.Icon, ".svg") {
-			if svg, err := ui.ParseSVG(raw); err == nil {
-				clientSVGs[status.Client] = svg
-			}
-		} else if bitmap, err := ui.DecodeBitmap(raw); err == nil {
-			clientBitmaps[status.Client] = bitmap
+	for _, adapter := range a.syncManager.Agents() {
+		if raw, name, ok := adapter.Icon(); ok {
+			registerClientIcon(adapter.ID(), raw, name)
 		}
 	}
 }
@@ -231,12 +219,14 @@ func (a *app) clientPlanDialog(c *ui.Context, t *ui.Theme, msgs locales.Messages
 			}
 			ui.Text(c, msgs.ClientsPlanHint()).FontSize(12).TextColor(t.TextMuted)
 			ui.Text(c, a.clientPlan.File).FontSize(11).TextColor(t.TextMuted).SingleLine()
-			preview := ""
-			if text, ok := a.clientPlan.Desired.(string); ok {
-				preview = text
-			} else {
-				raw, _ := json.MarshalIndent(a.clientPlan.Desired, "", "  ")
-				preview = string(raw)
+			preview := a.clientPlan.Preview
+			if preview == "" {
+				if text, ok := a.clientPlan.Desired.(string); ok {
+					preview = text
+				} else {
+					raw, _ := json.MarshalIndent(a.clientPlan.Desired, "", "  ")
+					preview = string(raw)
+				}
 			}
 			ui.TextArea(c, &preview).ReadOnly(true).Height(240).FontSize(11.5)
 			if a.clientPlan.Conflict {

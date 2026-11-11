@@ -1,0 +1,15 @@
+{
+  "id": "copilot",
+  "label": "GitHub Copilot",
+  "version": "1.0.0",
+  "description": "GitHub Copilot MCP configuration",
+  "entry": "index.js",
+  "format": "json",
+  "section": "mcpServers",
+  "paths": {
+    "darwin": "~/.copilot/mcp-config.json",
+    "linux": "~/.copilot/mcp-config.json",
+    "windows": "~/.copilot/mcp-config.json"
+  },
+  "icon": "icon.svg"
+}

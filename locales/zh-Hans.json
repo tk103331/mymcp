@@ -415,5 +415,10 @@
   "gatewayImportNoSelection": "请至少选择一个服务器。",
   "gatewayImportRescan": "重新扫描",
   "gatewayImportAgent": "Agent",
-  "gatewayImportAllAgents": "所有 Agent"
+  "gatewayImportAllAgents": "所有 Agent",
+  "pluginsInstalledSection": "已安装插件",
+  "pluginsBuiltinSection": "内置适配器",
+  "pluginsBuiltinHint": "随应用内置的 JavaScript 插件，启动时自动加载。",
+  "pluginsBuiltinBadge": "内置",
+  "pluginsPreviewOnly": "仅预览"
 }

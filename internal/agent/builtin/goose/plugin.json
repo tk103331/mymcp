@@ -1,0 +1,15 @@
+{
+  "id": "goose",
+  "label": "Goose",
+  "version": "1.0.0",
+  "description": "Goose MCP configuration",
+  "entry": "index.js",
+  "format": "yaml",
+  "section": "extensions",
+  "paths": {
+    "darwin": "~/.config/goose/config.yaml",
+    "linux": "~/.config/goose/config.yaml",
+    "windows": "%APPDATA%\\Block\\goose\\config\\config.yaml"
+  },
+  "icon": "icon.svg"
+}

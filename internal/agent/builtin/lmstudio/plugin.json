@@ -1,0 +1,15 @@
+{
+  "id": "lmstudio",
+  "label": "LM Studio",
+  "version": "1.0.0",
+  "description": "LM Studio MCP configuration",
+  "entry": "index.js",
+  "format": "json",
+  "section": "mcpServers",
+  "paths": {
+    "darwin": "~/.lmstudio/mcp.json",
+    "linux": "~/.lmstudio/mcp.json",
+    "windows": "~/.lmstudio/mcp.json"
+  },
+  "icon": "icon.svg"
+}

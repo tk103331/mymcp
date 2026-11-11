@@ -10,6 +10,7 @@ import (
 	toml "github.com/pelletier/go-toml/v2"
 	"github.com/tk103331/mymcp/internal/data"
 	"github.com/tk103331/mymcp/internal/model"
+	"github.com/tk103331/mymcp/internal/plugin"
 )
 
 func TestClientConfigMerge(t *testing.T) {
@@ -125,7 +126,15 @@ func TestCodexConfig(t *testing.T) {
 	instances := []*data.ServerInstance{
 		{ID: "s1", Config: &model.ServerConfig{ID: "s1", Name: "firecrawl"}, Endpoint: "http://localhost:8421/s1/sse"},
 	}
-	if err := writeCodexConfig(path, instances); err != nil {
+	client := clientByName("codex")
+	rendered, err := client.agent.Render(plugin.RenderContext{
+		Mode: "direct", Entry: "mymcp", Path: path,
+		Servers: clientServers(client.agent, instances),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(rendered.Content), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	raw, err := os.ReadFile(path)
@@ -146,7 +155,7 @@ func TestCodexConfig(t *testing.T) {
 	if document["model"] != "o3" {
 		t.Errorf("the existing model went away: %s", raw)
 	}
-	if !strings.Contains(codexPreview(instances), "[mcp_servers.firecrawl]") {
-		t.Errorf("the preview is not TOML: %q", codexPreview(instances))
+	if !strings.Contains(client.PreviewText(instances), "[mcp_servers.firecrawl]") {
+		t.Errorf("the preview is not TOML: %q", client.PreviewText(instances))
 	}
 }

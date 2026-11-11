@@ -6,8 +6,10 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	toml "github.com/pelletier/go-toml/v2"
+	"github.com/tk103331/mymcp/internal/agent"
 	"gopkg.in/yaml.v3"
 )
 
@@ -120,15 +122,15 @@ func TestApplyCodexTOML(t *testing.T) {
 func TestVSCODEAndComments(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
-	path := ClientByID("vscode").Path()
+	manager, err := New(filepath.Join(home, ".mymcp"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := manager.clientByID("vscode").Path()
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(path, []byte("{\n  // my servers\n  \"servers\": {\"keep\": {\"url\": \"http://keep\"}}\n}\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	manager, err := New(filepath.Join(home, ".mymcp"))
-	if err != nil {
 		t.Fatal(err)
 	}
 	if _, err := manager.Apply("vscode", "http://127.0.0.1:8422/mcp/default", "mymcp", false); err != nil {
@@ -258,7 +260,14 @@ func TestDirectConflict(t *testing.T) {
 }
 
 func TestDirectCodexRemoteUsesBridge(t *testing.T) {
-	entry := directEntry("codex", DirectServer{Name: "remote", Transport: "http", URL: "https://example.com/mcp"})
+	manager := newTestManager(t)
+	plan, err := manager.PlanDirect("codex", []DirectServer{{
+		Name: "remote", Transport: "http", URL: "https://example.com/mcp",
+	}}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	entry := directDoc(t, manager, "codex", "remote", plan.Preview)
 	if entry["command"] != "mcp-pipe" {
 		t.Fatalf("codex remote entry = %v", entry)
 	}
@@ -300,19 +309,29 @@ func TestGooseYAML(t *testing.T) {
 }
 
 func TestNewClientShapes(t *testing.T) {
-	zed := directEntry("zed", DirectServer{Name: "remote", Transport: "sse", URL: "https://example.com/sse"})
+	render := func(id string, server DirectServer) map[string]any {
+		t.Helper()
+		manager := newTestManager(t)
+		plan, err := manager.PlanDirect(id, []DirectServer{server}, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		key := server.Name
+		return directDoc(t, manager, id, key, plan.Preview)
+	}
+	zed := render("zed", DirectServer{Name: "remote", Transport: "sse", URL: "https://example.com/sse"})
 	if zed["command"] != "mcp-pipe" {
 		t.Fatalf("zed remote = %v", zed)
 	}
-	kimi := directEntry("kimi", DirectServer{Name: "remote", Transport: "sse", URL: "https://example.com/sse"})
+	kimi := render("kimi", DirectServer{Name: "remote", Transport: "sse", URL: "https://example.com/sse"})
 	if kimi["transport"] != "sse" {
 		t.Fatalf("kimi = %v", kimi)
 	}
-	antigravity := directEntry("antigravity", DirectServer{Name: "remote", Transport: "sse", URL: "https://example.com/sse"})
+	antigravity := render("antigravity", DirectServer{Name: "remote", Transport: "sse", URL: "https://example.com/sse"})
 	if antigravity["serverUrl"] != "https://example.com/sse" {
 		t.Fatalf("antigravity = %v", antigravity)
 	}
-	goose := directEntry("goose", DirectServer{Name: "demo", Transport: "stdio", Command: "npx", Args: []string{"-y", "demo"}})
+	goose := render("goose", DirectServer{Name: "demo", Transport: "stdio", Command: "npx", Args: []string{"-y", "demo"}})
 	if goose["type"] != "stdio" || goose["cmd"] != "npx" {
 		t.Fatalf("goose = %v", goose)
 	}
@@ -321,24 +340,63 @@ func TestNewClientShapes(t *testing.T) {
 func TestSSEClientsUseSSEEndpoint(t *testing.T) {
 	endpoint := "http://127.0.0.1:8422/mcp/default"
 	for _, id := range []string{"claudecode", "copilot", "cline", "qoder", "crush", "vscode", "droid", "goose", "kimi", "codebuddy", "antigravity"} {
-		client := ClientByID(id)
-		if client == nil {
-			t.Fatalf("missing client %q", id)
-		}
-		raw, err := json.Marshal(client.Entry(endpoint))
+		t.Run(id, func(t *testing.T) {
+			manager := newTestManager(t)
+			plan, err := manager.Plan(id, endpoint, "mymcp")
+			if err != nil {
+				t.Fatal(err)
+			}
+			content := plan.Preview
+			if !strings.Contains(content, endpoint+"/sse") {
+				t.Errorf("%s entry = %s, want the SSE endpoint", id, content)
+			}
+		})
+	}
+	t.Run("claude", func(t *testing.T) {
+		manager := newTestManager(t)
+		plan, err := manager.Plan("claude", endpoint, "mymcp")
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !strings.Contains(string(raw), endpoint+"/sse") {
-			t.Errorf("%s entry = %s, want the SSE endpoint", id, raw)
+		entry := directDoc(t, manager, "claude", "mymcp", plan.Preview)
+		args, _ := entry["args"].([]any)
+		if len(args) == 0 || args[len(args)-1] != endpoint+"/sse" {
+			t.Fatalf("claude bridge = %v", entry)
 		}
+	})
+}
+
+func newTestManager(t *testing.T) *Manager {
+	t.Helper()
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	manager, err := New(filepath.Join(home, ".mymcp"))
+	if err != nil {
+		t.Fatal(err)
 	}
-	claude := ClientByID("claude")
-	entry := claude.Entry(endpoint)
-	args, _ := entry["args"].([]string)
-	if len(args) == 0 || args[len(args)-1] != endpoint+"/sse" {
-		t.Fatalf("claude bridge = %v", entry)
+	return manager
+}
+
+func directDoc(t *testing.T, manager *Manager, id, name, content string) map[string]any {
+	t.Helper()
+	client := manager.clientByID(id)
+	if client == nil {
+		t.Fatalf("missing client %q", id)
 	}
+	doc, err := agent.Unmarshal(client.Format(), []byte(content))
+	if err != nil {
+		t.Fatal(err)
+	}
+	section := sectionOf(doc, client.Section())
+	server, ok := section[name]
+	if !ok {
+		t.Fatalf("%s has no %s entry in %s", id, name, content)
+	}
+	entry, ok := server.(map[string]any)
+	if !ok {
+		t.Fatalf("%s entry is %T", id, server)
+	}
+	return entry
 }
 
 func TestManagedClientDrift(t *testing.T) {
@@ -453,5 +511,138 @@ func TestRouterApplySeesDirectEntryConflict(t *testing.T) {
 	}
 	if _, err := manager.Apply("cursor", "http://127.0.0.1:8422/mcp/default", "mymcp", false); err == nil {
 		t.Fatal("router apply overwrote a user-edited direct entry")
+	}
+}
+
+func TestStatusesSkipPreviewOnly(t *testing.T) {
+	manager := newTestManager(t)
+	seen := map[string]bool{}
+	for _, status := range manager.Statuses() {
+		seen[status.Client] = true
+		if status.File == "" {
+			t.Fatalf("%s has no file", status.Client)
+		}
+	}
+	for _, id := range []string{"cursor", "codex", "goose", "deepchat"} {
+		if !seen[id] {
+			t.Errorf("missing %s", id)
+		}
+	}
+	for _, id := range []string{"chatwise", "cherrystudio"} {
+		if seen[id] {
+			t.Errorf("%s should not be a writable client", id)
+		}
+	}
+}
+
+func TestLegacyRouterStateCompatibility(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	path := filepath.Join(home, ".cursor", "mcp.json")
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	entry := map[string]any{"url": "http://127.0.0.1:8422/mcp/default"}
+	doc := map[string]any{"mcpServers": map[string]any{"mymcp": entry}}
+	writeJSON(t, path, doc)
+	state := State{Clients: map[string]Record{
+		"cursor": {
+			Client: "cursor", File: path, Entry: "mymcp",
+			Hash: hashAny(entry), AppliedAt: time.Now(),
+		},
+	}}
+	raw, err := json.Marshal(state)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(home, ".mymcp"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(home, ".mymcp", "sync.json"), raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	manager, err := New(filepath.Join(home, ".mymcp"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	drift, err := manager.Drift("cursor")
+	if err != nil || drift {
+		t.Fatalf("legacy state drift=%v err=%v", drift, err)
+	}
+	plan, err := manager.Plan("cursor", "http://127.0.0.1:8422/mcp/default", "mymcp")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plan.Conflict {
+		t.Fatalf("legacy state reported a conflict: %+v", plan)
+	}
+	if err := manager.Detach("cursor", false); err != nil {
+		t.Fatal(err)
+	}
+	doc = readJSON(t, path)
+	if _, ok := doc["mcpServers"].(map[string]any)["mymcp"]; ok {
+		t.Fatal("detach left the legacy entry")
+	}
+}
+
+func TestLegacyDirectStateCompatibility(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	path := filepath.Join(home, ".cursor", "mcp.json")
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	entry := map[string]any{"command": "npx", "args": []any{"-y", "demo"}}
+	doc := map[string]any{"mcpServers": map[string]any{"demo": entry}}
+	writeJSON(t, path, doc)
+	state := State{Clients: map[string]Record{
+		"cursor": {
+			Client: "cursor", File: path, Mode: "direct",
+			Entries: map[string]string{"demo": hashAny(entry)}, AppliedAt: time.Now(),
+		},
+	}}
+	raw, err := json.Marshal(state)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(home, ".mymcp"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(home, ".mymcp", "sync.json"), raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	manager, err := New(filepath.Join(home, ".mymcp"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	drift, err := manager.Drift("cursor")
+	if err != nil || drift {
+		t.Fatalf("legacy direct state drift=%v err=%v", drift, err)
+	}
+	plan, err := manager.PlanDirect("cursor", []DirectServer{{
+		Name: "demo", Transport: "stdio", Command: "npx", Args: []string{"-y", "demo"},
+	}}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plan.Conflict {
+		t.Fatalf("legacy direct state reported a conflict: %+v", plan)
+	}
+	if err := manager.Detach("cursor", false); err != nil {
+		t.Fatal(err)
+	}
+	doc = readJSON(t, path)
+	if _, ok := doc["mcpServers"].(map[string]any)["demo"]; ok {
+		t.Fatal("detach left the legacy direct entry")
+	}
+}
+
+func TestPreviewOnlyClientIsNotWritable(t *testing.T) {
+	manager := newTestManager(t)
+	if _, err := manager.Plan("chatwise", "http://127.0.0.1:8422/mcp/default", "mymcp"); err == nil {
+		t.Fatal("chatwise was writable")
+	}
+	if _, err := manager.PlanDirect("cherrystudio", nil, false); err == nil {
+		t.Fatal("cherrystudio was writable")
 	}
 }

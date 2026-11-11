@@ -1,0 +1,15 @@
+{
+  "id": "kiro",
+  "label": "Kiro",
+  "version": "1.0.0",
+  "description": "Kiro MCP configuration",
+  "entry": "index.js",
+  "format": "json",
+  "section": "mcpServers",
+  "paths": {
+    "darwin": "~/.kiro/settings/mcp.json",
+    "linux": "~/.kiro/settings/mcp.json",
+    "windows": "~/.kiro/settings/mcp.json"
+  },
+  "icon": "icon.svg"
+}
