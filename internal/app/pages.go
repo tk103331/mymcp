@@ -922,7 +922,7 @@ func clientLogo(c *ui.Context, client *clientDef, size float32, color ui.Color) 
 
 func clientIcon(c *ui.Context, name string, size float32, color ui.Color) {
 	if svg := clientSVGs[name]; svg != nil {
-		ui.Icon(c, svg).Size(size, size).TextColor(color)
+		ui.Image(c, svg).Size(size, size).Fit(ui.Contain).TextColor(color)
 		return
 	}
 	if bitmap := clientBitmaps[name]; bitmap != nil {

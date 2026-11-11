@@ -36,5 +36,16 @@ own sites and resized to 128×128 (2026-11-10):
 | ChatWise | https://chatwise.app/_app/immutable/assets/icon.BlYxxTy5.png |
 | DeepChat | https://deepchat.thinkinai.xyz/logo.png |
 
+## Rendering notes
+
+Most icons are drawn in their own colors with `ui.Image`. Icons that use only
+`currentColor` follow the surrounding text color, as Cursor, Windsurf, Trae,
+OpenCode, Cline, Qoder, VS Code, LM Studio, Factory Droid, Zed, Kimi Code and
+Goose do.
+
+MyGo's SVG renderer has no gradient, mask or filter support. The Codex, Gemini
+CLI, CodeBuddy and Antigravity icons were therefore flattened to solid brand
+colors; their original gradient versions were not changed upstream.
+
 The icons and trademarks belong to their respective owners and identify the
 clients they configure.
