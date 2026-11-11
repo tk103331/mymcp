@@ -184,8 +184,8 @@ WebView 或前端工程。应用配置在 `mygo.json`，界面文案在 `locales
 3. 打标签并推送：
 
 ```sh
-git tag v0.3.1
-git push origin v0.3.1
+git tag v0.3.2
+git push origin v0.3.2
 ```
 
 [`.github/workflows/release.yml`](.github/workflows/release.yml) 会校验标签与

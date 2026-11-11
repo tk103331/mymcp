@@ -151,7 +151,7 @@ CI：`.github/workflows/ci.yml` 在 push / PR 上运行同一组测试、vet、�
 - [ ] `go tool mygo build`
 - [ ] 更新 `mygo.json` 版本并提交
 - [x] 添加 MIT `LICENSE`
-- [ ] 打 `v0.3.1` 标签，触发 Release workflow
+- [ ] 打 `v0.3.2` 标签，触发 Release workflow
 - [ ] 检查 GitHub Release 中的 DMG、Linux 包、Windows 安装包、CLI 压缩包和
       `SHA256SUMS.txt`
 - [ ] 确认安装包中包含 `bin/mcp-pipe`，首次启动生成 `~/.mymcp/bin/mcp-pipe`

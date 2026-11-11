@@ -204,8 +204,8 @@ immediately.
 3. Tag the commit and push the tag:
 
 ```sh
-git tag v0.3.1
-git push origin v0.3.1
+git tag v0.3.2
+git push origin v0.3.2
 ```
 
 [`.github/workflows/release.yml`](.github/workflows/release.yml) checks the tag
