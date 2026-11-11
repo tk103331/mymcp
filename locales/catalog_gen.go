@@ -3689,3 +3689,183 @@ func PluginsDetachFirst() string { return In(i18n.Locale()).PluginsDetachFirst()
 func (msgs Messages) PluginsDetachFirst() string {
 	return Catalog.Format(msgs.locale, "pluginsDetachFirst", nil)
 }
+
+// NavDebug says "Debug"
+// in the language the app shows.
+func NavDebug() string { return In(i18n.Locale()).NavDebug() }
+
+// NavDebug says "Debug"
+// in the language of msgs.
+func (msgs Messages) NavDebug() string {
+	return Catalog.Format(msgs.locale, "navDebug", nil)
+}
+
+// DebugTitle says "MCP Debugger"
+// in the language the app shows.
+func DebugTitle() string { return In(i18n.Locale()).DebugTitle() }
+
+// DebugTitle says "MCP Debugger"
+// in the language of msgs.
+func (msgs Messages) DebugTitle() string {
+	return Catalog.Format(msgs.locale, "debugTitle", nil)
+}
+
+// DebugSubtitle says "Inspect tools and call them through the local gateway."
+// in the language the app shows.
+func DebugSubtitle() string { return In(i18n.Locale()).DebugSubtitle() }
+
+// DebugSubtitle says "Inspect tools and call them through the local gateway."
+// in the language of msgs.
+func (msgs Messages) DebugSubtitle() string {
+	return Catalog.Format(msgs.locale, "debugSubtitle", nil)
+}
+
+// DebugProfile says "Profile"
+// in the language the app shows.
+func DebugProfile() string { return In(i18n.Locale()).DebugProfile() }
+
+// DebugProfile says "Profile"
+// in the language of msgs.
+func (msgs Messages) DebugProfile() string {
+	return Catalog.Format(msgs.locale, "debugProfile", nil)
+}
+
+// DebugTools says "Tools"
+// in the language the app shows.
+func DebugTools() string { return In(i18n.Locale()).DebugTools() }
+
+// DebugTools says "Tools"
+// in the language of msgs.
+func (msgs Messages) DebugTools() string {
+	return Catalog.Format(msgs.locale, "debugTools", nil)
+}
+
+// DebugSearchTools says "Search tools"
+// in the language the app shows.
+func DebugSearchTools() string { return In(i18n.Locale()).DebugSearchTools() }
+
+// DebugSearchTools says "Search tools"
+// in the language of msgs.
+func (msgs Messages) DebugSearchTools() string {
+	return Catalog.Format(msgs.locale, "debugSearchTools", nil)
+}
+
+// DebugNoTools says "No tools available"
+// in the language the app shows.
+func DebugNoTools() string { return In(i18n.Locale()).DebugNoTools() }
+
+// DebugNoTools says "No tools available"
+// in the language of msgs.
+func (msgs Messages) DebugNoTools() string {
+	return Catalog.Format(msgs.locale, "debugNoTools", nil)
+}
+
+// DebugNoGateway says "The gateway is not running."
+// in the language the app shows.
+func DebugNoGateway() string { return In(i18n.Locale()).DebugNoGateway() }
+
+// DebugNoGateway says "The gateway is not running."
+// in the language of msgs.
+func (msgs Messages) DebugNoGateway() string {
+	return Catalog.Format(msgs.locale, "debugNoGateway", nil)
+}
+
+// DebugStartGateway says "Start gateway"
+// in the language the app shows.
+func DebugStartGateway() string { return In(i18n.Locale()).DebugStartGateway() }
+
+// DebugStartGateway says "Start gateway"
+// in the language of msgs.
+func (msgs Messages) DebugStartGateway() string {
+	return Catalog.Format(msgs.locale, "debugStartGateway", nil)
+}
+
+// DebugSelectTool says "Select a tool to inspect its schema and call it."
+// in the language the app shows.
+func DebugSelectTool() string { return In(i18n.Locale()).DebugSelectTool() }
+
+// DebugSelectTool says "Select a tool to inspect its schema and call it."
+// in the language of msgs.
+func (msgs Messages) DebugSelectTool() string {
+	return Catalog.Format(msgs.locale, "debugSelectTool", nil)
+}
+
+// DebugSchema says "Input schema"
+// in the language the app shows.
+func DebugSchema() string { return In(i18n.Locale()).DebugSchema() }
+
+// DebugSchema says "Input schema"
+// in the language of msgs.
+func (msgs Messages) DebugSchema() string {
+	return Catalog.Format(msgs.locale, "debugSchema", nil)
+}
+
+// DebugArguments says "Arguments (JSON)"
+// in the language the app shows.
+func DebugArguments() string { return In(i18n.Locale()).DebugArguments() }
+
+// DebugArguments says "Arguments (JSON)"
+// in the language of msgs.
+func (msgs Messages) DebugArguments() string {
+	return Catalog.Format(msgs.locale, "debugArguments", nil)
+}
+
+// DebugCall says "Call tool"
+// in the language the app shows.
+func DebugCall() string { return In(i18n.Locale()).DebugCall() }
+
+// DebugCall says "Call tool"
+// in the language of msgs.
+func (msgs Messages) DebugCall() string {
+	return Catalog.Format(msgs.locale, "debugCall", nil)
+}
+
+// DebugCalling says "Calling…"
+// in the language the app shows.
+func DebugCalling() string { return In(i18n.Locale()).DebugCalling() }
+
+// DebugCalling says "Calling…"
+// in the language of msgs.
+func (msgs Messages) DebugCalling() string {
+	return Catalog.Format(msgs.locale, "debugCalling", nil)
+}
+
+// DebugResult says "Result"
+// in the language the app shows.
+func DebugResult() string { return In(i18n.Locale()).DebugResult() }
+
+// DebugResult says "Result"
+// in the language of msgs.
+func (msgs Messages) DebugResult() string {
+	return Catalog.Format(msgs.locale, "debugResult", nil)
+}
+
+// DebugLatency says "Latency"
+// in the language the app shows.
+func DebugLatency() string { return In(i18n.Locale()).DebugLatency() }
+
+// DebugLatency says "Latency"
+// in the language of msgs.
+func (msgs Messages) DebugLatency() string {
+	return Catalog.Format(msgs.locale, "debugLatency", nil)
+}
+
+// DebugInvalidArgs says "Arguments must be a JSON object."
+// in the language the app shows.
+func DebugInvalidArgs() string { return In(i18n.Locale()).DebugInvalidArgs() }
+
+// DebugInvalidArgs says "Arguments must be a JSON object."
+// in the language of msgs.
+func (msgs Messages) DebugInvalidArgs() string {
+	return Catalog.Format(msgs.locale, "debugInvalidArgs", nil)
+}
+
+// DebugNoSelection says "No tool selected"
+// in the language the app shows.
+func DebugNoSelection() string { return In(i18n.Locale()).DebugNoSelection() }
+
+// DebugNoSelection says "No tool selected"
+// in the language of msgs.
+func (msgs Messages) DebugNoSelection() string {
+	return Catalog.Format(msgs.locale, "debugNoSelection", nil)
+}

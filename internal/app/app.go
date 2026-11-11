@@ -125,6 +125,17 @@ type app struct {
 	clientPlanClient  string
 	clientDetachForce string
 
+	debugProfile  string
+	debugTools    []gateway.ToolInfo
+	debugQuery    string
+	debugSelected string
+	debugArgs     string
+	debugResult   string
+	debugError    string
+	debugLatency  int64
+	debugBusy     bool
+	debugList     ui.ListState
+
 	pluginList   []*plugin.Plugin
 	pluginErrors []error
 	pluginRemove *plugin.Plugin
@@ -572,6 +583,7 @@ func (a *app) sidebar(c *ui.Context, t *ui.Theme, msgs locales.Messages, vibrant
 				ui.Textf(c, "%d", len(a.catalog.Servers())).FontSize(10.5).TextColor(t.TextMuted)
 			})
 			ui.SidebarItem(c, "gateway", iconServer, msgs.NavGateway())
+			ui.SidebarItem(c, "debug", iconDebug, msgs.NavDebug())
 			ui.SidebarItem(c, "clients", iconLink, msgs.NavClients())
 			ui.SidebarItem(c, "secrets", iconKey, msgs.NavSecrets())
 			ui.SidebarItem(c, "plugins", iconPuzzle, msgs.NavPlugins())
@@ -645,6 +657,9 @@ func (a *app) content(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
 			if path == "/gateway" {
 				a.loadGateway()
 			}
+			if path == "/debug" {
+				a.loadDebug()
+			}
 			if path == "/clients" {
 				a.loadClients()
 			}
@@ -672,6 +687,9 @@ func (a *app) content(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
 			case r.Match("/gateway"):
 				r.Title(msgs.GatewayTitle())
 				a.gatewayPage(c, t, msgs)
+			case r.Match("/debug"):
+				r.Title(msgs.DebugTitle())
+				a.debugPage(c, t, msgs)
 			case r.Match("/clients"):
 				r.Title(msgs.ClientsTitle())
 				a.clientsPage(c, t, msgs)
@@ -750,6 +768,8 @@ func (a *app) section() string {
 		return "usage"
 	case strings.HasPrefix(path, "/gateway"):
 		return "gateway"
+	case strings.HasPrefix(path, "/debug"):
+		return "debug"
 	case strings.HasPrefix(path, "/clients"):
 		return "clients"
 	case strings.HasPrefix(path, "/secrets"):
@@ -782,6 +802,8 @@ func (a *app) windowTitle(msgs locales.Messages) string {
 		return msgs.UsageTitle()
 	case path == "/gateway":
 		return msgs.GatewayTitle()
+	case path == "/debug":
+		return msgs.DebugTitle()
 	case path == "/clients":
 		return msgs.ClientsTitle()
 	case path == "/secrets":

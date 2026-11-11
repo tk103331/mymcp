@@ -78,6 +78,15 @@ type route struct {
 	name     string
 }
 
+// ToolInfo describes one aggregated tool for inspection and debugging.
+type ToolInfo struct {
+	Name        string          `json:"name"`
+	Server      string          `json:"server"`
+	Tool        string          `json:"tool"`
+	Description string          `json:"description,omitempty"`
+	InputSchema json.RawMessage `json:"inputSchema,omitempty"`
+}
+
 // New starts every enabled server of the profile, discovers its tools and
 // registers one aggregated MCP surface.
 func New(opts Options) (*Gateway, error) {
@@ -269,6 +278,70 @@ func sanitizeName(value string) string {
 	return b.String()
 }
 
+// Tools lists the aggregated tools for the debug page.
+func (g *Gateway) Tools() []ToolInfo {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	out := make([]ToolInfo, 0, len(g.routes))
+	for name, r := range g.routes {
+		var tool mcp.Tool
+		for _, candidate := range r.upstream.tools {
+			if candidate.Name == r.tool {
+				tool = candidate
+				break
+			}
+		}
+		schema, _ := json.Marshal(tool.InputSchema)
+		out = append(out, ToolInfo{
+			Name: name, Server: r.upstream.server.Name, Tool: r.tool,
+			Description: tool.Description, InputSchema: schema,
+		})
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Server != out[j].Server {
+			return out[i].Server < out[j].Server
+		}
+		return out[i].Name < out[j].Name
+	})
+	return out
+}
+
+// CallTool invokes an aggregated tool by name, as the gateway does for MCP
+// clients, and records the call in the usage log.
+func (g *Gateway) CallTool(ctx context.Context, name string, args map[string]any) (*mcp.CallToolResult, error) {
+	r, err := g.route(name)
+	if err != nil {
+		return nil, err
+	}
+	request := mcp.CallToolRequest{}
+	request.Params.Name = r.tool
+	request.Params.Arguments = args
+	return g.invoke(ctx, r, request)
+}
+
+// route resolves a namespaced name, or a unique original tool name.
+func (g *Gateway) route(name string) (route, error) {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	if r, ok := g.routes[name]; ok {
+		return r, nil
+	}
+	var matches []route
+	for _, candidate := range g.routes {
+		if candidate.tool == name {
+			matches = append(matches, candidate)
+		}
+	}
+	switch len(matches) {
+	case 1:
+		return matches[0], nil
+	case 0:
+		return route{}, fmt.Errorf("tool %q not found; use mymcp_find_tools", name)
+	default:
+		return route{}, fmt.Errorf("tool %q is ambiguous; use its namespaced name from mymcp_find_tools", name)
+	}
+}
+
 func (g *Gateway) registerAll() {
 	names := make([]string, 0, len(g.routes))
 	for name := range g.routes {
@@ -366,22 +439,9 @@ func (g *Gateway) callToolHandler(ctx context.Context, request mcp.CallToolReque
 	if name == "" {
 		return nil, fmt.Errorf("name is required")
 	}
-	r, ok := g.routes[name]
-	if !ok {
-		var matches []route
-		for _, candidate := range g.routes {
-			if candidate.tool == name {
-				matches = append(matches, candidate)
-			}
-		}
-		switch len(matches) {
-		case 1:
-			r, ok = matches[0], true
-		case 0:
-			return nil, fmt.Errorf("tool %q not found; use mymcp_find_tools", name)
-		default:
-			return nil, fmt.Errorf("tool %q is ambiguous; use its namespaced name from mymcp_find_tools", name)
-		}
+	r, err := g.route(name)
+	if err != nil {
+		return nil, err
 	}
 	call := mcp.CallToolRequest{}
 	call.Params.Name = r.tool

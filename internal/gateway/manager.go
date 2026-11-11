@@ -3,9 +3,11 @@ package gateway
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 
+	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/tk103331/mymcp/internal/secrets"
 	"github.com/tk103331/mymcp/internal/store"
 )
@@ -76,6 +78,24 @@ func (m *Manager) Handler() http.Handler { return m.mux }
 
 // BaseURL is the address clients use.
 func (m *Manager) BaseURL() string { return m.baseURL }
+
+// Tools lists one profile's aggregated tools for the debug page.
+func (m *Manager) Tools(profile string) ([]ToolInfo, error) {
+	g, ok := m.gateways[profile]
+	if !ok {
+		return nil, fmt.Errorf("profile %q not found", profile)
+	}
+	return g.Tools(), nil
+}
+
+// CallTool invokes a tool in one profile and records the call.
+func (m *Manager) CallTool(ctx context.Context, profile, name string, args map[string]any) (*mcp.CallToolResult, error) {
+	g, ok := m.gateways[profile]
+	if !ok {
+		return nil, fmt.Errorf("profile %q not found", profile)
+	}
+	return g.CallTool(ctx, name, args)
+}
 
 // Statuses reports each profile.
 func (m *Manager) Statuses() map[string]Status {

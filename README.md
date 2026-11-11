@@ -44,7 +44,7 @@ The repository includes:
 - **JavaScript adapters** — add a new client with `render`, `load` and `detect`
   hooks running in [moejs](https://github.com/Calcium-Ion/moejs).
 - **Native UI** — Chinese and English, light and dark themes, with Gateway,
-  Clients, Secrets, Plugins, Usage and Settings pages.
+  Debug, Clients, Secrets, Plugins, Usage and Settings pages.
 
 ## Direction
 
@@ -142,6 +142,8 @@ The desktop app has:
   edit, enable/disable and delete servers, create profiles and attach servers
   to them, create and revoke client keys, and see upstream startup errors and
   tool counts.
+- **Debug** — inspect aggregated tools, edit JSON arguments, call them through
+  the running gateway, and see the response and latency.
 - **Clients** — detect installed clients, preview and apply the router entry,
   or detach it. Entries changed after MyMCP wrote them are marked.
 - **Secrets** — store encrypted API keys and tokens referenced as

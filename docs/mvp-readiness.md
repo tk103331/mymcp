@@ -56,6 +56,15 @@
 - OAuth 服务器可以在编辑对话框中登录，令牌写入密钥库。
 - OAuth 令牌刷新失败会显示在网关健康信息中。
 
+### MCP 调试
+
+- Debug 页面列出当前 Profile 聚合后的工具。
+- 支持按名称、服务器和描述搜索工具。
+- 展示工具的 JSON Input Schema。
+- 编辑 JSON 参数并通过运行中的网关实际调用。
+- 显示结果 JSON 和调用延迟，调用会进入用量记录。
+- 网关未运行时可从调试页面启动网关。
+
 ### 用量与访问控制
 
 - 每次 `tools/call` 记录调用、错误、延迟和字节数。
@@ -87,7 +96,7 @@ go test ./...                    通过
 go test -race ./...              通过
 go vet ./...                     通过
 go tool mygo vet                 通过
-go tool mygo i18n check          通过（365 条中英文文案）
+go tool mygo i18n check          通过（383 条中英文文案）
 go tool mygo build               通过
 ```
 

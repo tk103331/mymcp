@@ -8,6 +8,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/tk103331/mymcp/internal/data"
+	"github.com/tk103331/mymcp/internal/gateway"
 	"github.com/tk103331/mymcp/internal/model"
 	"github.com/tk103331/mymcp/internal/secrets"
 	"github.com/tk103331/mymcp/internal/store"
@@ -270,6 +271,30 @@ func TestNormalizeGatewayAddr(t *testing.T) {
 	for _, input := range []string{"", "127.0.0.1", "0.0.0.0:8422", "127.0.0.1:0", "127.0.0.1:99999", "example.com:8422"} {
 		if _, err := normalizeGatewayAddr(input); err == nil {
 			t.Errorf("normalizeGatewayAddr(%q) was accepted", input)
+		}
+	}
+}
+
+func TestDebugPage(t *testing.T) {
+	a := newTestApp()
+	a.gwRunning = true
+	a.gwProfiles = []*store.Profile{{Name: "default"}}
+	a.debugProfile = "default"
+	a.debugTools = []gateway.ToolInfo{{
+		Name: "demo__echo", Server: "demo", Tool: "echo",
+		Description: "Echo text", InputSchema: []byte(`{"type":"object","properties":{"text":{"type":"string"}}}`),
+	}}
+	a.debugSelected = "demo__echo"
+	a.debugArgs = `{"text":"hello"}`
+	a.router.Transition = ui.TransitionNone
+	a.router.Push("/debug")
+	a.lastPath = "/debug"
+	tt := ui.NewTester(a.view, 1100, 800)
+	tt.SetLocale("zh-Hans")
+	tt.Frame()
+	for _, text := range []string{"MCP 调试", "demo__echo", "参数结构", "调用工具"} {
+		if !tt.HasText(text) {
+			t.Fatalf("debug page is missing %q: %q", text, tt.Texts())
 		}
 	}
 }

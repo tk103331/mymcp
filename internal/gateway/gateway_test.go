@@ -140,6 +140,19 @@ func TestGatewayAggregatesAndRecords(t *testing.T) {
 	if len(result.Content) != 1 {
 		t.Fatalf("restarted result = %+v", result)
 	}
+
+	// The debug API exposes the same route and records its calls.
+	infos := g.Tools()
+	if len(infos) != 1 || infos[0].Name != "demo__echo" || len(infos[0].InputSchema) == 0 {
+		t.Fatalf("debug tools = %+v", infos)
+	}
+	debugResult, err := g.CallTool(ctx, infos[0].Name, map[string]any{"text": "debug"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(debugResult.Content) != 1 {
+		t.Fatalf("debug result = %+v", debugResult)
+	}
 }
 
 func TestToolSearch(t *testing.T) {

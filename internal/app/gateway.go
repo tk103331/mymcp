@@ -101,6 +101,9 @@ func (a *app) startGateway(msgs locales.Messages) {
 			a.gwRunning, a.gwStarting = true, false
 			a.gwError, a.gwDirty = "", false
 			a.loadGateway()
+			if a.router.Path() == "/debug" {
+				a.loadDebug()
+			}
 		}
 		if a.win != nil {
 			a.win.Update(apply)
@@ -141,6 +144,9 @@ func (a *app) stopGateway() {
 		manager.Close()
 	}
 	a.loadGateway()
+	if a.router.Path() == "/debug" {
+		a.loadDebug()
+	}
 }
 
 // restartGateway rebuilds the profile gateways so registry changes apply.
