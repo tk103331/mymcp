@@ -120,7 +120,7 @@ func TestApplyCodexTOML(t *testing.T) {
 func TestVSCODEAndComments(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
-	path := filepath.Join(home, "Library", "Application Support", "Code", "User", "mcp.json")
+	path := ClientByID("vscode").Path()
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatal(err)
 	}
