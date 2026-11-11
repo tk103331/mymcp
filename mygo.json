@@ -5,6 +5,7 @@
   "version": "0.3.1",
   "out": "build",
   "copyright": "© 2026 tk103331",
+  "license": "MIT",
   "i18n": {
     "dir": "locales",
     "source": "en"
