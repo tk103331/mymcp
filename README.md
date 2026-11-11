@@ -147,8 +147,8 @@ The desktop app has:
 - **Profiles** — create profiles, attach servers, copy profile endpoints, and
   manage client keys.
 - **Catalog** — add a server from the bundled catalog into a profile.
-- **Debug** — inspect aggregated tools, edit JSON arguments, call them through
-  the running gateway, and see the response and latency.
+- **Debug** — inspect tools grouped by MCP server, edit JSON arguments, call
+  them through the running gateway, and see the response and latency.
 - **Clients** — detect installed clients, preview and apply the router entry,
   or detach it. Entries changed after MyMCP wrote them are marked.
 - **Secrets** — store encrypted API keys and tokens referenced as

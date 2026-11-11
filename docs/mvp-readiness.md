@@ -66,7 +66,8 @@
 
 ### MCP 调试
 
-- Debug 页面列出当前 Profile 聚合后的工具。
+- Debug 页面列出当前 Profile 聚合后的工具，并按 MCP Server 分组。
+- 工具行显示完整名称和描述摘要，描述过长时省略。
 - 支持按名称、服务器和描述搜索工具。
 - 展示工具的 JSON Input Schema。
 - 编辑 JSON 参数并通过运行中的网关实际调用。

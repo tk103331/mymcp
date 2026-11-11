@@ -259,15 +259,17 @@ func (a *app) debugPage(c *ui.Context, t *ui.Theme, msgs locales.Messages) {
 							})
 							for _, tool := range group.Tools {
 								tool := tool
-								row := ui.ButtonBase(c).Padding(7, 8).Gap(3).Radius(7).Justify(ui.Start)
+								row := ui.ButtonBase(c).Padding(7, 9).Radius(7)
 								if a.debugSelected == tool.Name {
 									row.Background(t.Accent.Alpha(0.12))
 								}
 								row.Children(func() {
-									ui.Text(c, tool.Tool).FontSize(11.5).Bold().SingleLine()
-									if tool.Description != "" {
-										ui.Text(c, tool.Description).FontSize(9.5).TextColor(t.TextMuted).MaxLines(1)
-									}
+									ui.Column(c).Gap(2).Grow(1).Children(func() {
+										ui.Text(c, tool.Tool).FontSize(11.5).Bold().SingleLine()
+										if tool.Description != "" {
+											ui.Text(c, tool.Description).FontSize(9.5).TextColor(t.TextMuted).MaxLines(1)
+										}
+									})
 								})
 								if row.Clicked() {
 									a.selectDebugTool(tool.Name)
