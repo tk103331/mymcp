@@ -2,7 +2,7 @@
   "name": "MyMCP",
   "slug": "mymcp",
   "identifier": "io.github.tk103331.mymcp",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "out": "build",
   "copyright": "© 2026 tk103331",
   "i18n": {
